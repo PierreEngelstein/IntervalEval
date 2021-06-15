@@ -12,7 +12,7 @@ To get dotnet 5 / 6, follow the instructions provided by Microsoft depending on 
 * On Windows: https://docs.microsoft.com/en-us/dotnet/core/install/windows?tabs=net50
 * On MacOS: https://docs.microsoft.com/en-us/dotnet/core/install/macos
 
-If you are on linux, the script `build_all.sh` provides an easy way to directly build all the executables for all targets (windows and linux) using the release configuration and single-file standalone option.
+If you are on linux, the script `build_all.sh` provides an easy way to directly build all the executables for all targets (windows and linux) using the release configuration and single-file standalone option. You still need to download and setup dotnet to use this script.
 
 ### Web Interface
 To build and run the web interface version, execute the following commands from the root firectory of the project:

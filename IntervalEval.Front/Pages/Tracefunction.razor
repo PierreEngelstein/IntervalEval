@@ -1,0 +1,78 @@
+@page "/tracefunction"
+@using Plotly.Blazor.Traces.ScatterLib
+@using IntSharp.Types
+@using IntervalEval
+@using Plotly.Blazor.LayoutLib
+@using System.Threading
+@using System.Diagnostics
+@using System.Drawing
+@using IntSharp
+@using IntSharp.Types
+@using Math = IntSharp.Math
+
+<PlotlyChart @bind-Config="@_config" @bind-Layout="@_layout" @bind-Data="@_data" @ref="_chart"/>
+
+
+
+@code {
+    private PlotlyChart _chart;
+    private Config _config;
+    private Layout _layout;
+    private IList<ITrace> _data;
+
+    protected override void OnInitialized()
+    {
+        _data = new List<ITrace>();
+        var start = -2*System.Math.PI;
+        var end   = 2*System.Math.PI;
+        var epsilon = 0.5;
+        var intervals = new List<Interval>();
+        var images = new List<Interval>();
+        _data.Clear();
+        _chart?.Purge();
+        _layout = new Layout
+        {
+            Width = 500, Height = 500, Title = new Title {Text = "y = x*log(x)"}
+        };
+        var x = new List<object>();
+        var y = new List<object>();
+        for (double i = start; i <= end; i += 0.01)
+        {
+            x.Add(i);
+            y.Add(i*i * System.Math.Sin(i));
+        }
+        
+        _data.Add(new Scatter
+        {
+            FillColor = "blue",
+            X = x,
+            Y = y,
+        });
+        for (double i = start; i <= end; i+=epsilon)
+        {
+            var interval = Interval.FromInfSup(i, i + epsilon);
+            // var image = IntervalHelpers.XLog(interval, "none");
+            var image = Math.Sqr(interval) * Math.Sin(interval);
+            if(image.Supremum <= 20) continue;
+            intervals.Add(interval);
+            images.Add(image);
+            _data.Add(new Scatter
+            {
+                Mode = ModeFlag.Lines | ModeFlag.Markers,
+                Fill = FillEnum.ToSelf,
+                X = new List<object> {interval.Infimum, interval.Infimum, interval.Supremum, interval.Supremum, interval.Infimum},
+                Y = new List<object> {image.Infimum, image.Supremum, image.Supremum, image.Infimum, image.Infimum},
+                HoverInfo = Plotly.Blazor.Traces.ScatterLib.HoverInfoFlag.Text
+            });
+        }
+
+        _layout.Width = 800;
+        _layout.Height = 800;
+        _layout.Title = new Title {Text = "y = sin(x)"};
+        if (_chart == null) return;
+        _chart.Layout = _layout;
+        _chart?.Update();
+        base.OnInitialized();
+    }
+
+}

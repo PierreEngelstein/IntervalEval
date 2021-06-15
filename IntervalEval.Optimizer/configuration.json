@@ -1,0 +1,29 @@
+{
+  "Debug": false,
+  "Rho": [
+    {
+      "Item1": 0.111111111,
+      "Item2": 0.888888888
+    },
+    {
+      "Item1": 0.5,
+      "Item2": 0.5
+    }
+  ],
+  "Ranges": [
+    {
+      "Item1": -2.0,
+      "Item2": 2.0
+    },
+    {
+      "Item1": -2.0,
+      "Item2": 2.0
+    },
+    {
+      "Item1": -2.0,
+      "Item2": 2.0
+    }
+  ],
+  "IterationAmount": 100,
+  "ProblemSize": 3
+}

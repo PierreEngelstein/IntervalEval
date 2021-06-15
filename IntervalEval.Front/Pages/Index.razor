@@ -1,0 +1,468 @@
+@page "/"
+@implements IDisposable
+@using Plotly.Blazor.Traces.ScatterLib
+@using IntSharp.Types
+@using IntervalEval
+@using Plotly.Blazor.LayoutLib
+@using System.Threading
+@using System.Diagnostics
+@using IntSharp
+@using HoverLabel = Plotly.Blazor.LayoutLib.HoverLabel
+@using HoverInfoFlag = Plotly.Blazor.Traces.Mesh3DLib.HoverInfoFlag
+
+<div class="container" style="margin: 0px; width: 100%">
+    <div class="row">
+        <div class="col-4">
+            <div class="container">
+                <div class="row">
+                    <label class="form-label">Current iteration: @($"{_currentIteration} / {_iterations}") </label>
+                </div>
+                <div class="row">
+                    <label class="form-label">Execution time: @($"{_executionTime} s") </label>
+                </div>
+                <div class="row">
+                    <label class="form-label">Max interval width: @($"{_maxIntervalWidth}") </label>
+                </div>
+                <div class="row">
+                    <label class="form-label">Precision on F: @($"{_precisionF}") </label>
+                </div>
+                <div class="row">
+                    <label class="form-label">F in: [@($"{_imageMinimum}, {_imageMaximum}")] </label>
+                </div>
+                <div class="row">
+                    <label class="form-label">Solution in: @_solutionBounds</label>
+                </div>
+                <div class="row">
+                    <label class="form-label">Boxes amount: @($"{_intervalAmount}") </label>
+                </div>
+                <div class="row">
+                    <label class="form-label" for="typeNumber">Optimization iterations</label>
+                </div>
+                <div class="row">
+                    <div class="form-outline">
+                        <input
+                            type="number"
+                            id="typeNumber"
+                            value="@_iterations"
+                            @onchange="@(async e => await SelectIterations(e, _tokenSource.Token))">
+                    </div>
+                </div>
+                <div class="row">
+                    <label class="form-label">Optimization type : @_optimizationType</label>
+                </div>
+                <div class="row">
+                    <button class="btn btn-outline-secondary" @onclick="@(async () => await SelectOptimizationType("Maximize", _tokenSource.Token))">Maximize</button>
+                </div>
+                <div class="row">
+                    <button class="btn btn-outline-secondary" @onclick="@(async () => await SelectOptimizationType("Minimize", _tokenSource.Token))">Minimize</button>
+                </div>
+                <div class="row">
+                    <div class="col-2">
+                        <select @onchange="@(async e => await SelectDimension(e, _tokenSource.Token))">
+                            <option value="2D">2D</option>
+                            <option value="3D">3D</option>
+                        </select>
+                    </div>
+                    <div class="col-2">
+                        <select @onchange="@(async e => await SelectProblem(e, _tokenSource.Token))" style="max-width: 1000%">
+                            @foreach (var problemDescriptor in _currentProblems)
+                            {
+                                <option value="@_currentProblems.IndexOf(problemDescriptor)">@problemDescriptor</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                
+                
+                @if (string.Equals(_dimension, "3D") && _selectedProblem == _currentProblems[1])
+                {
+                    <div class="row">
+                        <!-- rho_1 -->
+                        <div class="col-5">
+                            <div class="container">
+                                <div class="row">rho_1²</div>
+                                <div class="row">
+                                    <input
+                                        type="number"
+                                        id="typeNumber"
+                                        value="@_rho1.Item1"
+                                        @onchange="@(e => SelectRho(e, 0, _tokenSource.Token))">
+                                </div>
+                                <div class="row">
+                                    <input
+                                        type="number"
+                                        id="typeNumber"
+                                        value="@_rho1.Item2"
+                                        @onchange="@(e => SelectRho(e, 1, _tokenSource.Token))">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-2"></div>
+                        
+                        <!-- rho_2 -->
+                        <div class="col-3">
+                            <div class="container">
+                                <div class="row">rho_2²</div>
+                                <div class="row">
+                                    <input
+                                        type="number"
+                                        id="typeNumber"
+                                        value="@_rho2.Item1"
+                                        @onchange="@(e => SelectRho(e, 2, _tokenSource.Token))">
+                                </div>
+                                <div class="row">
+                                    <input
+                                        type="number"
+                                        id="typeNumber"
+                                        value="@_rho2.Item2"
+                                        @onchange="@(e => SelectRho(e, 3, _tokenSource.Token))">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-2"></div>
+                    </div>
+                }
+                
+                <div class="row">
+                    <button class="btn btn-outline-secondary" @onclick="@(() => _tokenSource.Cancel())">Cancel running operation</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-4  offset-4">
+            <PlotlyChart @bind-Config="@_config" @bind-Layout="@_layout" @bind-Data="@_data" @ref="_chart"/>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-4">
+            <PlotlyChart @bind-Config="@_config" @bind-Layout="@_layoutBoxAmount" @bind-Data="@_dataBoxAmount" @ref="_chartBoxAmount"/>
+        </div>
+        <div class="col-4  offset-4">
+            <PlotlyChart @bind-Config="@_config" @bind-Layout="@_layoutBoxVolume" @bind-Data="@_dataBoxVolume" @ref="_chartBoxVolume"/>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    private PlotlyChart _chart;
+    private PlotlyChart _chartBoxAmount;
+    private PlotlyChart _chartBoxVolume;
+    private Config _config;
+    private Layout _layout;
+    private Layout _layoutBoxAmount;
+    private Layout _layoutBoxVolume;
+    private IList<ITrace> _data;
+    private IList<ITrace> _dataBoxAmount;
+    private IList<ITrace> _dataBoxVolume;
+    private OptimizationType _optimizationType = OptimizationType.Maximization;
+    private List<ProblemDescriptor> _currentProblems;
+    private ProblemDescriptor _selectedProblem;
+    private int _iterations = 1;
+    private string _dimension = "3D";
+    private CancellationTokenSource _tokenSource;
+    private int _currentIteration;
+    private double _executionTime;
+    private double _maxIntervalWidth;
+    private double _intervalAmount;
+    private double _precisionF;
+    private double _imageMinimum;
+    private double _imageMaximum;
+    private Tuple<double, double> _rho1;
+    private Tuple<double, double> _rho2;
+    private string _solutionBounds;
+    private static string[] Colors =
+    {
+        "#000000", //black
+        "#1f77b4", //blue
+        "#ff7f0e", //orange
+        "#2ca02c", //green          3<====
+        "#d62728", //red
+        "#9467bd", //purple
+        "#8c564b", //brown
+        "#e377c2", //pink 1
+        "#ebebeb", //white eb       8<=====
+        "#bcbd22", //yellow         9<=====
+        "#17becf", //light blue 
+        "#7f7f7f", //gray 7f        11<=====
+        "#fe0f98"  //pink 2
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _tokenSource = new CancellationTokenSource();
+        _currentProblems = ProblemDescriptor.Problems3D;
+        _selectedProblem = _currentProblems[1];
+        _precisionF = 0.0;
+        _imageMinimum = 0.0;
+        _imageMaximum = 0.0;
+        _data = new List<ITrace>();
+        _dataBoxAmount = new List<ITrace>();
+        _dataBoxVolume = new List<ITrace>();
+        _config = new Config();
+        _currentIteration = 0;
+        _rho1 = new Tuple<double, double>(1.0/9.0, 8.0/9.0);
+        _rho2 = new Tuple<double, double>(0.5, 0.5);
+        _solutionBounds = "[<-2, 2>, <-2, 2>, <-2, 2>]";
+        Optimizer.OptimizationIterations.OnChange += OnIterationChange;
+        Optimizer.PrecisionF.OnChange += OnReceivePrecisionF;
+        Optimizer.IntervalFMinimum.OnChange += OnReceiveMinimumF;
+        Optimizer.IntervalFMaximum.OnChange += OnReceiveMaximumF;
+        Optimizer.EvolutionBoxesAmount.OnChange += OnReceiveBoxAmount;
+        Optimizer.EvolutionVolumeBoxesByCategory.OnChange += OnReceiveBoxVolume;
+        _layout = new Layout
+        {
+            Width = 500, Height = 500, Title = new Title {Text = _currentProblems[0].ToString()}
+        };
+        _layoutBoxAmount = new Layout
+        {
+            Width = 500, Height = 500, Title = new Title{Text = "Boxes amount function of optimizer iterations"}
+        };        
+        _layoutBoxVolume = new Layout
+        {
+            Width = 500, Height = 500, Title = new Title{Text = "Boxes amount function of optimizer iterations"}
+        };
+        await Optimize(_iterations, _optimizationType, _tokenSource.Token);
+    }
+    
+    private void OnIterationChange(object sender, int iteration)
+    {
+        _currentIteration = iteration-1;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnReceivePrecisionF(object sender, double precision)
+    {
+        _precisionF = precision;
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private void OnReceiveMinimumF(object sender, double min)
+    {
+        _imageMinimum = min;
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private void OnReceiveBoxAmount(object sender, List<double> boxes)
+    {
+        _dataBoxAmount.Clear();
+        _chartBoxAmount?.Purge();
+
+        var x = new List<object>();
+        var y = new List<object>();
+        
+        for (var i = 0; i < boxes.Count; i++)
+        {
+            x.Add(i);
+            y.Add(boxes[i]);
+        }
+        _dataBoxAmount.Add(new Scatter
+        {
+            X = x, Y = y
+        });
+        
+        _layoutBoxAmount.Width = 500;
+        _layoutBoxAmount.Height = 500;
+        _layoutBoxAmount.Title = new Title {Text = "Boxes amount function of optimizer iterations"};
+        if (_chartBoxAmount == null) return;
+        _chartBoxAmount.Layout = _layoutBoxAmount;
+        _chartBoxAmount?.Update();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnReceiveBoxVolume(object sender, List<Dictionary<int, double>> volumes)
+    {
+        _dataBoxVolume.Clear();
+        _chartBoxVolume?.Purge();
+
+        var x = new List<object>();
+        var y = new Dictionary<int, List<object>>();
+        for (var index = 0; index < volumes.Count; index++)
+        {
+            x.Add(index);
+            var currentVolume = volumes[index];
+            for (int j = 0; j <= 12; j++)
+            {
+                if (!y.ContainsKey(j))
+                {
+                    y.Add(j, new List<object>());
+                }
+                if (currentVolume.ContainsKey(j)) y[j].Add(currentVolume[j]);
+                else y[j].Add(0);
+            }
+        }
+
+        foreach (var yKey in y.Keys)
+        {
+            _dataBoxVolume.Add(new Scatter
+            {
+                X = x, Y = y[yKey], Name = $"Constraint {yKey}", FillColor = Colors[yKey]
+            });
+        }
+
+        _layoutBoxVolume.Width = 500;
+        _layoutBoxVolume.Height = 500;
+        _layoutBoxVolume.Title = new Title {Text = "Boxes amount by constraint satisfied function of optimizer iterations"};
+        if (_chartBoxVolume == null) return;
+        _chartBoxVolume.Layout = _layoutBoxVolume;
+        _chartBoxVolume?.Update();
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private void OnReceiveMaximumF(object sender, double max)
+    {
+        _imageMaximum = max;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SelectProblem(ChangeEventArgs e, CancellationToken token = default)
+    {
+        if (!int.TryParse((string) e.Value, out var selectedProblemIndex)) return;
+        _selectedProblem = _currentProblems[selectedProblemIndex];
+        Console.WriteLine(_selectedProblem);
+        await Optimize(_iterations, _optimizationType, token);
+    }
+
+    private async Task SelectDimension(ChangeEventArgs e, CancellationToken token = default)
+    {
+        _dimension = (string) e.Value;
+        _currentProblems = string.Equals(_dimension, "3D") ? ProblemDescriptor.Problems3D : ProblemDescriptor.Problems2D;
+        _selectedProblem = _currentProblems[0];
+        await Optimize(_iterations, _optimizationType, token);
+    }
+
+    private async Task SelectOptimizationType(string optimizationType, CancellationToken token = default)
+    {
+        if (string.Equals(optimizationType, "Maximize"))
+        {
+            _optimizationType = OptimizationType.Maximization;
+        }else if (string.Equals(optimizationType, "Minimize"))
+        {
+            _optimizationType = OptimizationType.Minimization;
+        }
+        await Optimize(_iterations, _optimizationType, token);
+    }
+
+    private async Task SelectIterations(ChangeEventArgs e, CancellationToken token = default)
+    {
+        if (!int.TryParse((string) e.Value, out var selectedIterations)) return;
+        _iterations = selectedIterations;
+        await Optimize(_iterations, _optimizationType, token);
+    }
+
+    private void SelectRho(ChangeEventArgs e, int index, CancellationToken token = default)
+    {
+        if (!double.TryParse((string) e.Value, out var value)) return;
+        switch (index)
+        {
+            case 0:
+                _rho1 = new Tuple<double, double>(value, _rho1.Item2);
+                break;
+            case 1:
+                _rho1 = new Tuple<double, double>(_rho1.Item1, value);
+                break;
+            case 2:
+                _rho2 = new Tuple<double, double>(value, _rho2.Item2);
+                break;
+            case 3:
+                _rho2 = new Tuple<double, double>(_rho2.Item1, value);
+                break;
+        }
+    }
+
+    private async Task Optimize(int iterations, OptimizationType optimizationType, CancellationToken token = default)
+    {
+        await Task.Run(() =>
+        {
+            _iterations = iterations;
+            _data.Clear();
+            _chart?.Purge();
+            var listInputMi = new List<object>() {_rho1, _rho2};
+            var sw = new Stopwatch();
+            sw.Start();
+            var result = Optimizer.Optimize(string.Equals(_dimension, "2D") ? new[]
+            {
+                Interval.FromInfSup(-2, 2),
+                Interval.FromInfSup(-2, 2)
+            } : new[]
+            {
+                Interval.FromInfSup(-2, 2),
+                Interval.FromInfSup(-2, 2),
+                Interval.FromInfSup(-2, 2)
+            }, _selectedProblem.Function, _selectedProblem.Constraints, optimizationType, iterations, false, listInputMi, token);
+            sw.Stop();
+            var optimizerSolutions = result as OptimizerSolution[] ?? result.ToArray();
+            _maxIntervalWidth = optimizerSolutions.MaxWidth();
+            _intervalAmount = optimizerSolutions.Count();
+            _executionTime = sw.ElapsedMilliseconds / 1000.0;
+            
+            InvokeAsync(StateHasChanged);
+            if (optimizerSolutions.Any())
+            {
+                double minX = optimizerSolutions[0][0].Infimum, minY = optimizerSolutions[0][1].Infimum, minZ = optimizerSolutions[0][2].Infimum;
+                double maxX = optimizerSolutions[0][0].Supremum, maxY = optimizerSolutions[0][1].Supremum, maxZ = optimizerSolutions[0][2].Supremum;
+                foreach (var optimizerSolution in optimizerSolutions)
+                {
+                    if (optimizerSolution[0].Infimum <= minX) minX = optimizerSolution[0].Infimum;
+                    if (optimizerSolution[1].Infimum <= minY) minY = optimizerSolution[1].Infimum;
+                    if (optimizerSolution[2].Infimum <= minZ) minZ = optimizerSolution[2].Infimum;
+                    if (optimizerSolution[0].Supremum >= maxX) maxX = optimizerSolution[0].Supremum;
+                    if (optimizerSolution[1].Supremum >= maxY) maxY = optimizerSolution[1].Supremum;
+                    if (optimizerSolution[2].Supremum >= maxZ) maxZ = optimizerSolution[2].Supremum;
+                    _data.Add(string.Equals(_dimension, "2D") ? 
+                    new Scatter // 2D: draw a plane
+                    {
+                        Mode = ModeFlag.Lines | ModeFlag.Markers,
+                        Fill = FillEnum.ToSelf,
+                        // Plane edges
+                        X = new List<object> {optimizerSolution[0].Infimum, optimizerSolution[0].Infimum, optimizerSolution[0].Supremum, optimizerSolution[0].Supremum, optimizerSolution[0].Infimum},
+                        Y = new List<object> {optimizerSolution[1].Infimum, optimizerSolution[1].Supremum, optimizerSolution[1].Supremum, optimizerSolution[1].Infimum, optimizerSolution[1].Infimum},
+                        // Hover text: display input and output values
+                        //F(X, Y) = [{_selectedProblem.Function(optimizerSolution, null).Item1.Infimum:0.00000}, {_selectedProblem.Function(optimizerSolution, null).Item1.Supremum:0.00000}]
+                        HoverText =  $"X = [{optimizerSolution[0].Infimum:0.00000}, {optimizerSolution[0].Supremum:0.00000}],<br>Y = [{optimizerSolution[1].Infimum:0.00000}, {optimizerSolution[1].Supremum:0.00000}],<br><br>Gradient: {optimizerSolution.GradientTagged}",
+                        HoverInfo = Plotly.Blazor.Traces.ScatterLib.HoverInfoFlag.Text
+                    } :
+                    new Mesh3D // 3D: draw a cube
+                    {
+                        // Cube edges
+                        X = new List<object> {optimizerSolution[0].Infimum, optimizerSolution[0].Infimum, optimizerSolution[0].Supremum, optimizerSolution[0].Supremum, optimizerSolution[0].Infimum, optimizerSolution[0].Infimum, optimizerSolution[0].Supremum, optimizerSolution[0].Supremum},
+                        Y = new List<object> {optimizerSolution[1].Infimum, optimizerSolution[1].Supremum, optimizerSolution[1].Supremum, optimizerSolution[1].Infimum, optimizerSolution[1].Infimum, optimizerSolution[1].Supremum, optimizerSolution[1].Supremum, optimizerSolution[1].Infimum},
+                        Z = new List<object> {optimizerSolution[2].Infimum, optimizerSolution[2].Infimum, optimizerSolution[2].Infimum, optimizerSolution[2].Infimum, optimizerSolution[2].Supremum, optimizerSolution[2].Supremum, optimizerSolution[2].Supremum, optimizerSolution[2].Supremum},
+                        // Cube indexes
+                        I = new List<object> {7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2},
+                        J = new List<object> {3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3},
+                        K = new List<object> {0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6},
+                        Color = Colors[optimizerSolution.RespectedConstraints],
+                        // Hover text: display input and output values
+                        //F(X, Y, Z) = [{_selectedProblem.Function(optimizerSolution, listInputMi).Item1.Infimum:0.000}, {_selectedProblem.Function(optimizerSolution, listInputMi).Item1.Supremum:0.000}]
+                        HoverText =  $"X = [{optimizerSolution[0].Infimum:0.000}, {optimizerSolution[0].Supremum:0.000}],<br>Y = [{optimizerSolution[1].Infimum:0.000}, {optimizerSolution[1].Supremum:0.000}],<br>Z = [{optimizerSolution[2].Infimum:0.000}, {optimizerSolution[2].Supremum:0.000}],<br><br>Gradient: {optimizerSolution.GradientTagged}",
+                        HoverInfo = HoverInfoFlag.Text
+                    });
+                }
+                _solutionBounds = $"[<{minX}, {maxX}>, <{minY}, {maxY}>, <{minZ}, {maxZ}>]";
+                Console.WriteLine($"Solution in [<{minX}, {maxX}>, <{minY}, {maxY}>, <{minZ}, {maxZ}>]");
+            }
+            
+            _layout.Width = 800;
+            _layout.Height = 800;
+            _layout.Title = new Title {Text = _selectedProblem.ToString()};
+            if (_chart == null) return;
+            _chart.Layout = _layout;
+            _chart?.Update();
+        }, token);
+        await InvokeAsync(StateHasChanged);
+        _tokenSource.Dispose();
+        _tokenSource = new CancellationTokenSource();
+    }
+
+    public void Dispose()
+    {
+        _tokenSource.Cancel();
+        _tokenSource.Dispose();
+        Optimizer.OptimizationIterations.OnChange -= OnIterationChange;
+        Optimizer.PrecisionF.OnChange -= OnReceivePrecisionF;
+        Optimizer.IntervalFMaximum.OnChange -= OnReceiveMaximumF;
+        Optimizer.IntervalFMinimum.OnChange -= OnReceiveMinimumF;
+    }
+}

@@ -1,0 +1,113 @@
+@page "/mutualinfo"
+@using IntSharp.Types
+@using IntervalEval
+@using Plotly.Blazor.LayoutLib
+@using IntSharp
+@using Plotly.Blazor.Traces.Mesh3DLib
+@using System.Drawing
+
+<PlotlyChart @bind-Config="@_config" @bind-Layout="@_layout" @bind-Data="@_data" @ref="_chart"/>
+
+
+
+@code {
+    private PlotlyChart _chart;
+    private Config _config;
+    private Layout _layout;
+    private IList<ITrace> _data;
+
+    protected override void OnInitialized()
+    {
+        _data = new List<ITrace>();
+        _data.Clear();
+        _chart?.Purge();
+        _layout = new Layout
+        {
+            Width = 1776, Height = 1000, Title = new Title {Text = "y = x*log(x)"}
+        };
+
+        var a = Interval.FromInfSup(-0.1, 0.5);
+        var b = Interval.FromInfSup(-0.1, 1);
+        var aCut = a.Cut(60);
+        var bCut = b.Cut(60);
+
+        const double p1 = 0.1;
+        const double p2 = 0.9;
+        const double item1 = 1.0;
+        const double item2 = 0.0;
+        const double item3 = 0.5;
+        const double item4 = 0.5;
+
+        var y1A = item1 * p1;
+        var y1B = System.Math.Sqrt(item1 * item2) * p1;
+        var y1C = item2 * p1;
+
+        var y2A = item3 * p2;
+        var y2B = System.Math.Sqrt(item3 * item4) * p2;
+        var y2C = item4 * p2;
+
+        var colorStart = new Tuple<byte, byte, byte>(0x1f, 0x77, 0xb4);
+        var colorEnd = new Tuple<byte, byte, byte>(0x2c, 0xa0, 0x2c);
+
+        for (var i = 0; i < aCut.Count; i++)
+        {
+            var itA = aCut[i];
+            for (var j = 0; j < bCut.Count; j++)
+            {
+                // Console.WriteLine($"i={i}, j={j}");
+                var itB = bCut[j];
+                var (it, _, _, _) = IntervalHelpers.MutualInformation(itA, itB, Interval.FromDoublePrecise(0.2), y1A, y1B, y1C, y2A, y2B, y2C, false, -1, null);
+                if (it.IsEmpty() || double.IsNaN(it.Infimum) || double.IsNaN(it.Supremum) || double.IsInfinity(it.Infimum) || double.IsInfinity(it.Supremum))
+                {
+                    _data.Add(new Mesh3D // 3D: draw a cube
+                    {
+                        // Cube edges
+                        X = new List<object> {itA.Infimum, itA.Infimum, itA.Supremum, itA.Supremum, itA.Infimum, itA.Infimum, itA.Supremum, itA.Supremum},
+                        Y = new List<object> {itB.Infimum, itB.Supremum, itB.Supremum, itB.Infimum, itB.Infimum, itB.Supremum, itB.Supremum, itB.Infimum},
+                        Z = new List<object> {0, 0, 0, 0, 0.1, 0.1, 0.1, 0.1},
+                        // Cube indexes
+                        I = new List<object> {7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2},
+                        J = new List<object> {3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3},
+                        K = new List<object> {0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6},
+                        Color = "gray",
+                        // Hover text: display input and output values
+                        HoverText = $"A = [{itA.Infimum:0.000}, {itA.Supremum:0.000}],<br>B = [{itB.Infimum:0.000}, {itB.Supremum:0.000}],<br>MutualInfo(A, B) = [{it.Infimum:0.000}, {it.Supremum:0.000}]",
+                        HoverInfo = HoverInfoFlag.Text
+                    });
+                }
+                else
+                {
+                    var currentColor = new Tuple<byte, byte, byte>(
+                        (byte) (colorStart.Item1 + (i + j)/2 * (colorEnd.Item1 - colorStart.Item1)),
+                        (byte) (colorStart.Item2 + (i + j)/2 * (colorEnd.Item2 - colorStart.Item2)),
+                        (byte) (colorStart.Item3 + (i + j)/2 * (colorEnd.Item3 - colorStart.Item3))
+                        );
+                    var hex = "#" + BitConverter.ToString(new[] {currentColor.Item1, currentColor.Item2, currentColor.Item3}).Replace("-", string.Empty).ToLower();
+                    _data.Add(new Mesh3D // 3D: draw a cube
+                    {
+                        // Cube edges
+                        X = new List<object> {itA.Infimum, itA.Infimum, itA.Supremum, itA.Supremum, itA.Infimum, itA.Infimum, itA.Supremum, itA.Supremum},
+                        Y = new List<object> {itB.Infimum, itB.Supremum, itB.Supremum, itB.Infimum, itB.Infimum, itB.Supremum, itB.Supremum, itB.Infimum},
+                        Z = new List<object> {it.Infimum, it.Infimum, it.Infimum, it.Infimum, it.Supremum, it.Supremum, it.Supremum, it.Supremum},
+                        // Cube indexes
+                        I = new List<object> {7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2},
+                        J = new List<object> {3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3},
+                        K = new List<object> {0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6},
+                        Color = hex,
+                        // Hover text: display input and output values
+                        HoverText = $"A = [{itA.Infimum:0.000}, {itA.Supremum:0.000}],<br>B = [{itB.Infimum:0.000}, {itB.Supremum:0.000}],<br>MutualInfo(A, B) = [{it.Infimum:0.000}, {it.Supremum:0.000}]",
+                        HoverInfo = HoverInfoFlag.Text
+                    });
+                }
+            }
+        }
+
+        _layout.Width = 1776;
+        _layout.Height = 1000;
+        _layout.Title = new Title {Text = "Mutual Information with d = 0.2"};
+        if (_chart == null) return;
+        _chart.Layout = _layout;
+        _chart?.Update();
+        base.OnInitialized();
+    }
+}

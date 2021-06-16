@@ -44,3 +44,5 @@ The [IntervalEval.Tests](IntervalEval.Tests/) project contains some unit tests.
 The [IntervalEval.FrontConsole](IntervalEval.FrontConsole/) project contains some code tests, in particular tests for 3 states as input of the problem to check optimization time and memory usage for larger problems.
 
 The [IntervalEval](IntervalEval/) project is the interval library, based on the [IntSharp](https://github.com/selmaohneh/IntSharp) library with some modifications added to better suit our need for the optimizer.
+
+The [IbexCodes](IbexCodes/) folder contains equivalent codes for solving the problem using [ibex](https://www.ibex-lib.org/) (ibexopt). This is used for comparison of performance of our code compared to the built-in optimizer of ibex.

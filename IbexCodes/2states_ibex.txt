@@ -1,0 +1,61 @@
+Constants
+  m_size = 2;
+  // P1[m_size][m_size] = ((0.1, 0); (0, 0));
+  P1[m_size][m_size] = ((0.0111111111, 0.0314269681); (0, 0.0888888889));
+  // P1[m_size][m_size] = ((0.09226, 0.0267225074); (0, 0.00774));
+  // P1[m_size][m_size] = ((0.03, 0.0458258); (0, 0.07));
+  // P2[m_size][m_size] = ((0, 0); (0, 0.90));
+  P2[m_size][m_size] = ((0.45, 0.45); (0, 0.45));
+
+// M: measurement operator
+// P: density operator
+function tr(M[m_size][m_size], P[m_size][m_size])
+  return P(1)(1) * M(1)(1) + 2*M(1)(2)*P(1)(2) + 2*M(2)(1)*P(2)(1) + M(2)(2)*P(2)(2);
+end
+
+function EntropyM(_M1[m_size][m_size], _M2[m_size][m_size], _P1[m_size][m_size], _P2[m_size][m_size])
+  sum_m1 = tr(_M1, _P1) + tr(_M1, _P2);
+  sum_m2 = tr(_M2, _P1) + tr(_M2, _P2);
+  return -xlog(sum_m1)-xlog(sum_m2);
+end
+
+function EntropyP(_M1[m_size][m_size], _M2[m_size][m_size], _P1[m_size][m_size], _P2[m_size][m_size])
+  sum_p1 = tr(_M1, _P1) + tr(_M2, _P1);
+  sum_p2 = tr(_M1, _P2) + tr(_M2, _P2);
+  return -xlog(sum_p1)-xlog(sum_p2);
+end
+
+function EntropyMP(_M1[m_size][m_size], _M2[m_size][m_size], _P1[m_size][m_size], _P2[m_size][m_size])
+  return -xlog(tr(_M1, _P1))-xlog(tr(_M1, _P2))-xlog(tr(_M2, _P1))-xlog(tr(_M2, _P2));
+end
+
+function MutualInformation(_M1[m_size][m_size], _M2[m_size][m_size], _P1[m_size][m_size], _P2[m_size][m_size])
+  return EntropyM(_M1, _M2, _P1, _P2) + ( -0.10 * ln(0.10) -0.90 * ln(0.90)) - EntropyMP(_M1, _M2, _P1, _P2);
+end
+
+function I(_P1[m_size][m_size], _P2[m_size][m_size], _m1a, _m1b, _m1c, _m1d)
+  _M1 = ((_m1a, _m1b); (_m1c, _m1d));
+  _M2 = ((1-_m1a, -_m1b); (-_m1c, 1-_m1d));
+  return MutualInformation(_M1, _M2, _P1, _P2);
+end
+
+Variables
+  M1_a in [0, 0.5],  M1_b in [-1, 1], M1_d in [0, 1];
+
+Minimize
+  -I(P1, P2, M1_a,  M1_b,  0, M1_d)
+  //-xlog(((0.100001*M1_a)+(((0.450001*M1_a)+(0.900001*M1_b))+(0.450001*M1_d))))-xlog(0.1*(-M1_a+1) + 0.45*(-M1_a+1) + 0.9 * (-M1_b) + 0.45*(-M1_d+1))
+  // -xlog(M1_a + M1_b) - xlog(M1_c + M1_d) - xlog(M1_a + M1_d) - xlog(M1_b + M1_c)
+
+Constraints
+  // -I(P1, P2, M1_a,  M1_b,  M1_c, M1_d) <= ( -0.10 * ln(0.10) -0.90 * ln(0.90));
+
+  M1_a >= 0;
+  M1_a <= 0.5;
+  M1_d >= 0;
+  // M1_a + M1_d = 1;
+  M1_a*M1_d - M1_b^2 >= 0;
+  // (1-M1_a) >= 0;
+  // (1-M1_d) >= 0;
+  (1-M1_a)*(1-M1_d) - (-M1_b)^2 >= 0;
+end

@@ -1,0 +1,72 @@
+Constants
+  m_amount = 2;
+  m_size = 2;
+  P1[m_size][m_size] = ((0.10, 0); (0, 0));
+  P2[m_size][m_size] = ((0.3, 0.3); (0, 0.3));
+  P3[m_size][m_size] = ((0, 0); (0, 0.3));
+
+// M: measurement operator
+// P: density operator
+function tr(M[m_size][m_size], P[m_size][m_size])
+  // return m1(1)(1) * m2(1)(1) + m1(1)(2) * m2(2)(1) + m1(2)(1) * m2(1)(2) + m1(2)(2) * m2(2)(2);
+  return P(1)(1) * M(1)(1) + 2*M(1)(2)*P(1)(2) + 2*M(2)(1)*P(2)(1) + M(2)(2)*P(2)(2);
+end
+
+function EntropyM(_M1[m_size][m_size], _M2[m_size][m_size], _M3[m_size][m_size], _P1[m_size][m_size], _P2[m_size][m_size], _P3[m_size][m_size])
+  sum_m1 = tr(_M1, _P1) + tr(_M1, _P2) + tr(_M1, _P3);
+  sum_m2 = tr(_M2, _P1) + tr(_M2, _P2) + tr(_M2, _P3);
+  sum_m3 = tr(_M3, _P1) + tr(_M3, _P2) + tr(_M3, _P3);
+  return -xlog(sum_m1)-xlog(sum_m2) - xlog(sum_m3);
+end
+
+function EntropyP(_M1[m_size][m_size], _M2[m_size][m_size], _M3[m_size][m_size], _P1[m_size][m_size], _P2[m_size][m_size], _P3[m_size][m_size])
+  sum_p1 = tr(_M1, _P1) + tr(_M2, _P1) + tr(_M3, _P1);
+  sum_p2 = tr(_M1, _P2) + tr(_M2, _P2) + tr(_M3, _P2);
+  sum_p3 = tr(_M1, _P3) + tr(_M2, _P3) + tr(_M3, _P3);
+  return -xlog(sum_p1)-xlog(sum_p2)-xlog(sum_p3);
+end
+
+function EntropyMP(_M1[m_size][m_size], _M2[m_size][m_size], _M3[m_size][m_size], _P1[m_size][m_size], _P2[m_size][m_size], _P3[m_size][m_size])
+  return -xlog(tr(_M1, _P1))-xlog(tr(_M1, _P2))-xlog(tr(_M1, _P3))-xlog(tr(_M2, _P1))-xlog(tr(_M2, _P2))-xlog(tr(_M2, _P3))-xlog(tr(_M3, _P1))-xlog(tr(_M3, _P2))-xlog(tr(_M3, _P3));
+end
+
+function MutualInformation(_M1[m_size][m_size], _M2[m_size][m_size], _M3[m_size][m_size], _P1[m_size][m_size], _P2[m_size][m_size], _P3[m_size][m_size])
+  return EntropyM(_M1, _M2, _M3, _P1, _P2, _P3) + ( -0.10 * ln(0.10) -0.60 * ln(0.60)-0.30 * ln(0.30)) - EntropyMP(_M1, _M2, _M3, _P1, _P2, _P3);
+end
+
+function I(_P1[m_size][m_size], _P2[m_size][m_size], _P3[m_size][m_size], _m1a, _m1b, _m1c, _m1d, _m2a, _m2b, _m2c, _m2d)
+  _M1 = ((_m1a, _m1b); (_m1c, _m1d));
+  _M2 = ((_m2a, _m2b); (_m2c, _m2d));
+  _M3 = ((1-_m1a-_m2a, -_m1b-_m2b); (-_m1c-_m2c, 1-_m1d-_m2d));
+  return MutualInformation(_M1, _M2, _M3, _P1, _P2, _P3);
+end
+
+Variables
+  M1_a in [0, 1],  M1_b in [-1, 1], M1_c in [-1, 1], M1_d in [0, 1];
+  M2_a in [0, 1],  M2_b in [-1, 1], M2_c in [-1, 1], M2_d in [0, 1];
+
+Minimize
+  -I(P1, P2, P3, M1_a,  M1_b,  M1_c, M1_d, M2_a,  M2_b,  M2_c, M2_d);
+  //(M1_a^2 + 3*M1_d^2 + 4*M2_a^2 + 0.6*(M1_a * M1_d) + 0.5*(M2_a * M2_d) + 0.2*(M1_a * M2_a) + 0.1*(M1_b * M2_c)) + xlog(0.5*M1_a + 0.3*M2_a) + xlog(0.1*M1_a + 0.9*M1_b) + xlog(0.8*M1_b + 0.45*M1_a);
+
+Constraints
+  // -I(P1, P2, P3, M1_a,  M1_b,  M1_c, M1_d, M2_a,  M2_b,  M2_c, M2_d) <= ( -0.10 * ln(0.10) -0.60 * ln(0.60)-0.30 * ln(0.30));
+
+  // M1_a >= 0;
+  // M1_d >= 0;
+  M1_a*M1_d - M1_b^2 - M1_c^2 >= 0;
+  // max(M1_a*M1_d - M1_b^2 - M1_c^2, -(M1_a*M1_d - M1_b^2 - M1_c^2)) >=0;
+  // M2_a >= 0;
+  // M2_d >= 0;
+  // M1_a <= 1/3; // cost function & constraint both symmetric ((M1, M2) <=> (M2, M1))
+  // M2_a <= 0.5;
+  M1_a + M1_d = 1;
+  M2_a + M2_d = 1;
+  M2_a*M2_d - M2_b^2 - M2_c^2 >= 0;
+  // max(M2_a*M2_d - M2_b^2 - M2_c^2, -(M2_a*M2_d - M2_b^2 - M2_c^2)) >= 0;
+  (1-M1_a-M2_a) >= 0;
+  (1-M1_a-M2_a) <= 1;
+  (1-M1_d-M2_d) >= 0;
+  (1-M1_d-M2_d) <= 1;
+  (1-M1_a-M2_a)*(1-M1_d-M2_d) - (-M1_b-M2_b)^2 - (-M1_c-M2_c)^2 >= 0;
+end

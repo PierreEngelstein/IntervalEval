@@ -1,7 +1,6 @@
 using System;
-using IntSharp.Types;
 
-namespace IntervalEval
+namespace IntervalEval.Core
 {
     /// <summary>
     /// Implements Interval Booleans logic. Based on [Luc Jaulin, Michel Kieffer, Olivier Didrit, and Eric Walter.Applied IntervalAnalysis. Springer, 2001]

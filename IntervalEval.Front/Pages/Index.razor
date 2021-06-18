@@ -1,12 +1,13 @@
 @page "/"
 @implements IDisposable
 @using Plotly.Blazor.Traces.ScatterLib
-@using IntSharp.Types
 @using IntervalEval
 @using Plotly.Blazor.LayoutLib
 @using System.Threading
 @using System.Diagnostics
-@using IntSharp
+@using IntervalEval.Core
+@using IntervalEval.Core.Helpers
+@using IntervalEval.Core.Optimize
 @using HoverLabel = Plotly.Blazor.LayoutLib.HoverLabel
 @using HoverInfoFlag = Plotly.Blazor.Traces.Mesh3DLib.HoverInfoFlag
 
@@ -95,6 +96,14 @@
                                         value="@_rho1.Item2"
                                         @onchange="@(e => SelectRho(e, 1, _tokenSource.Token))">
                                 </div>
+                                <div class="row">p(rho_1)</div>
+                                <div class="row">
+                                    <input
+                                        type="number"
+                                        id="typeNumber"
+                                        value="@probabilities.Item1"
+                                        @onchange="@(e => SelectProbabilities(e, 0, _tokenSource.Token))">
+                                </div>
                             </div>
                         </div>
                         
@@ -117,6 +126,14 @@
                                         id="typeNumber"
                                         value="@_rho2.Item2"
                                         @onchange="@(e => SelectRho(e, 3, _tokenSource.Token))">
+                                </div>
+                                <div class="row">p(rho_2)</div>
+                                <div class="row">
+                                    <input
+                                        type="number"
+                                        id="typeNumber"
+                                        value="@probabilities.Item2"
+                                        @onchange="@(e => SelectProbabilities(e, 1, _tokenSource.Token))">
                                 </div>
                             </div>
                         </div>
@@ -171,6 +188,7 @@
     private double _imageMaximum;
     private Tuple<double, double> _rho1;
     private Tuple<double, double> _rho2;
+    private Tuple<double, double> probabilities;
     private string _solutionBounds;
     private static string[] Colors =
     {
@@ -204,6 +222,7 @@
         _currentIteration = 0;
         _rho1 = new Tuple<double, double>(1.0/9.0, 8.0/9.0);
         _rho2 = new Tuple<double, double>(0.5, 0.5);
+        probabilities = new Tuple<double, double>(0.1, 0.9);
         _solutionBounds = "[<-2, 2>, <-2, 2>, <-2, 2>]";
         Optimizer.OptimizationIterations.OnChange += OnIterationChange;
         Optimizer.PrecisionF.OnChange += OnReceivePrecisionF;
@@ -371,6 +390,17 @@
         }
     }
 
+    private void SelectProbabilities(ChangeEventArgs e, int index, CancellationToken token = default)
+    {
+        if (!double.TryParse((string) e.Value, out var value)) return;
+        probabilities = index switch
+        {
+            0 => new Tuple<double, double>(value, probabilities.Item2),
+            1 => new Tuple<double, double>(probabilities.Item1, value),
+            _ => probabilities
+        };
+    }
+
     private async Task Optimize(int iterations, OptimizationType optimizationType, CancellationToken token = default)
     {
         await Task.Run(() =>
@@ -378,7 +408,7 @@
             _iterations = iterations;
             _data.Clear();
             _chart?.Purge();
-            var listInputMi = new List<object>() {_rho1, _rho2};
+            var listInputMi = new List<object>() {_rho1, _rho2, probabilities};
             var sw = new Stopwatch();
             sw.Start();
             var result = Optimizer.Optimize(string.Equals(_dimension, "2D") ? new[]

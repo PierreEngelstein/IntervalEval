@@ -2,28 +2,30 @@
   "Debug": false,
   "Rho": [
     {
-      "Item1": 0.111111111,
-      "Item2": 0.888888888
+      "Infimum": 0.111111111111111,
+      "Supremum": 0.888888888888888,
+      "Probability": 0.1
     },
     {
-      "Item1": 0.5,
-      "Item2": 0.5
+      "Infimum": 0.5,
+      "Supremum": 0.5,
+      "Probability": 0.9
     }
   ],
   "Ranges": [
     {
-      "Item1": -2.0,
-      "Item2": 2.0
+      "Infimum": -2.0,
+      "Supremum": 2.0
     },
     {
-      "Item1": -2.0,
-      "Item2": 2.0
+      "Infimum": -2.0,
+      "Supremum": 2.0
     },
     {
-      "Item1": -2.0,
-      "Item2": 2.0
+      "Infimum": -2.0,
+      "Supremum": 2.0
     }
   ],
-  "IterationAmount": 100,
+  "IterationAmount": 50,
   "ProblemSize": 3
 }

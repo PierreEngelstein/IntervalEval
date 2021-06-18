@@ -1,6 +1,4 @@
-﻿using IntSharp.Types;
-
-namespace IntSharp
+﻿namespace IntervalEval.Core
 {
     /// <summary>
     /// Inflation is needed after every interval arithmetic operation. 

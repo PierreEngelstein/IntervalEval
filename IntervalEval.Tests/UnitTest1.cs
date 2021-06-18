@@ -1,4 +1,5 @@
 using System;
+using IntervalEval.Core;
 using NUnit.Framework;
 
 namespace IntervalEval.Tests

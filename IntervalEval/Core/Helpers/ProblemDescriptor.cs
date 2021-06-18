@@ -1,21 +1,37 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
-using System.Threading;
-using IntSharp;
-using IntSharp.Types;
-using Math = System.Math;
+using IntervalEval.Core.MutualInformationProblem;
+using IntervalEval.Core.Optimize;
 
-namespace IntervalEval
+namespace IntervalEval.Core.Helpers
 {
+    /// <summary>
+    /// Provides a way to store in objects problems to be solved.
+    /// </summary>
     public class ProblemDescriptor
     {
         private static IEnumerable<string> _lockingPrintGradient = new string[1];
+        
+        // Mathematical representation of the cost function
         private string ProblemFunctionDescription { get; init; }
+        // Mathematical representation of the constraints
         private string ProblemConstraintsDescription { get; init; }
         
+        /// <summary>
+        /// Cost function evaluated over a OptimizerSolution (a box)
+        /// </summary>
+        /// <param>OptimizerSolution: function box input</param>
+        /// <param>List(object): List of additional arguments that may be needed for computation.</param>
+        /// <param>Tuple(Interval, bool, int, IEnumerable(Interval)): Return type of the function</param>
+        ///     -> <param>Interval</param>: the evaluation of the function (We consider only f : R^n -> R^1)
+        ///     -> <param>bool</param>: do we want to use gradient for evaluation. (default: false) 
+        ///     -> <param>int</param>: which gradient was satisfied ? (default: -1)
+        ///     -> <param>IEnumerable(Interval)</param>: result of the gradient (default: null)
         public Func<OptimizerSolution, List<object>, Tuple<Interval, bool, int, IEnumerable<Interval>>> Function { get; private init; }
+        /// <summary>
+        /// Constraint function over a box. Returns true if the box satisfies the constraints, false otherwise.
+        /// </summary>
         public Func<OptimizerSolution, bool> Constraints { get; private init; }
 
         public override string ToString()
@@ -69,7 +85,7 @@ namespace IntervalEval
                 }
                 // x1² + x2² - 1 < 0
                 var listVars = enumerable.ToList();
-                var result1 = IntSharp.Math.Sqr(listVars[0]) + IntSharp.Math.Sqr(listVars[1]) - 1.0;
+                var result1 = Core.IntervalMath.Sqr(listVars[0]) + Core.IntervalMath.Sqr(listVars[1]) - 1.0;
                 if (result1.Supremum < 0)
                 {
                     // Test gradient a l'interieur: si contient 0 => renvoie faux
@@ -104,7 +120,7 @@ namespace IntervalEval
                 }
                 // x1² + x2² - 1 < 0
                 var listVars = enumerable.ToList();
-                var result1 = IntSharp.Math.Sqr(listVars[0]) + IntSharp.Math.Sqr(listVars[1]) - 1.0;
+                var result1 = Core.IntervalMath.Sqr(listVars[0]) + Core.IntervalMath.Sqr(listVars[1]) - 1.0;
                 if (result1.Supremum < 0)
                 {
                     // Test gradient a l'interieur: si contient 0 => renvoie faux
@@ -139,7 +155,7 @@ namespace IntervalEval
                 }
                 // x1² + x2² - 1 < 0
                 var listVars = enumerable.ToList();
-                var ctr1 = IntSharp.Math.Sqr(listVars[0]) + IntSharp.Math.Sqr(listVars[1]) - 1.0;
+                var ctr1 = Core.IntervalMath.Sqr(listVars[0]) + Core.IntervalMath.Sqr(listVars[1]) - 1.0;
                 var ctr2 = -listVars[0] - listVars[1];
                 var toKeep = true;
                 
@@ -229,7 +245,7 @@ namespace IntervalEval
             Function = (variables, _) =>
             {
                 var listVars = variables.Solutions.ToList();
-                return new Tuple<Interval, bool, int, IEnumerable<Interval>>(listVars.Count != 2 ? Interval.FromInfSup(double.NaN, double.NaN) : IntSharp.Math.Sqr(listVars[0] + listVars[1]), false, -1, null);
+                return new Tuple<Interval, bool, int, IEnumerable<Interval>>(listVars.Count != 2 ? Interval.FromInfSup(double.NaN, double.NaN) : Core.IntervalMath.Sqr(listVars[0] + listVars[1]), false, -1, null);
             },
             Constraints = variables =>
             {
@@ -239,7 +255,7 @@ namespace IntervalEval
                     return false;
                 }
                 var listVars = enumerable.ToList();
-                var ctr1 = IntSharp.Math.Sqr(listVars[0]) + IntSharp.Math.Sqr(listVars[1]) - 1.0; // Constraint
+                var ctr1 = Core.IntervalMath.Sqr(listVars[0]) + Core.IntervalMath.Sqr(listVars[1]) - 1.0; // Constraint
                 var ctr2 = listVars[0] - listVars[1]; //gradient(f) = \alpha gradient(g) => KKT
                 return ctr1.ContainsZero() && ctr2.ContainsZero();
             }
@@ -252,7 +268,7 @@ namespace IntervalEval
             Function = (variables, _) =>
             {
                 var listVars = variables.Solutions.ToList();
-                return new Tuple<Interval, bool, int, IEnumerable<Interval>>(listVars.Count != 2 ? Interval.FromInfSup(double.NaN, double.NaN) : IntSharp.Math.Sqr(listVars[0]) * listVars[1], false, -1, null);
+                return new Tuple<Interval, bool, int, IEnumerable<Interval>>(listVars.Count != 2 ? Interval.FromInfSup(double.NaN, double.NaN) : Core.IntervalMath.Sqr(listVars[0]) * listVars[1], false, -1, null);
             },
             Constraints = variables =>
             {
@@ -262,8 +278,8 @@ namespace IntervalEval
                     return false;
                 }
                 var listVars = enumerable.ToList();
-                var ctr1 = IntSharp.Math.Sqr(listVars[0]) + IntSharp.Math.Sqr(listVars[1]) - 3.0;
-                var ctr2 = IntSharp.Math.Sqr(listVars[0]) - IntSharp.Math.Sqr(listVars[1]); //gradient(f) = \alpha gradient(g) => KKT
+                var ctr1 = Core.IntervalMath.Sqr(listVars[0]) + Core.IntervalMath.Sqr(listVars[1]) - 3.0;
+                var ctr2 = Core.IntervalMath.Sqr(listVars[0]) - Core.IntervalMath.Sqr(listVars[1]); //gradient(f) = \alpha gradient(g) => KKT
                 return ctr1.ContainsZero() && ctr2.ContainsZero();
             }
         };
@@ -274,7 +290,7 @@ namespace IntervalEval
             Function = (variables, _) =>
             {
                 var listVars = variables.Solutions.ToList();
-                return new Tuple<Interval, bool, int, IEnumerable<Interval>>(listVars.Count != 2 ? Interval.FromInfSup(double.NaN, double.NaN) : IntervalHelpers.XLog(listVars[0], "none") + IntervalHelpers.XLog(listVars[1], "none"), false, -1, null);
+                return new Tuple<Interval, bool, int, IEnumerable<Interval>>(listVars.Count != 2 ? Interval.FromInfSup(double.NaN, double.NaN) : IntervalMath.XLog(listVars[0], "none") + IntervalMath.XLog(listVars[1], "none"), false, -1, null);
             },
             Constraints = variables =>
             {
@@ -284,7 +300,7 @@ namespace IntervalEval
                     return false;
                 }
                 var listVars = enumerable.ToList();
-                var ctr1 = IntSharp.Math.Sqr(listVars[0]) + IntSharp.Math.Sqr(listVars[1]) - 3.0; 
+                var ctr1 = Core.IntervalMath.Sqr(listVars[0]) + Core.IntervalMath.Sqr(listVars[1]) - 3.0; 
                 return ctr1.ContainsZero();
             }
         };
@@ -295,7 +311,7 @@ namespace IntervalEval
             Function = (variables, _) =>
             {
                 var listVars = variables.Solutions.ToList();
-                return new Tuple<Interval, bool, int, IEnumerable<Interval>>(listVars.Count != 2 ? Interval.FromInfSup(double.NaN, double.NaN) : IntervalHelpers.XLog(listVars[0] + listVars[1], "none") + IntervalHelpers.XLog(listVars[0] - listVars[1], "none"), false, -1, null);
+                return new Tuple<Interval, bool, int, IEnumerable<Interval>>(listVars.Count != 2 ? Interval.FromInfSup(double.NaN, double.NaN) : IntervalMath.XLog(listVars[0] + listVars[1], "none") + IntervalMath.XLog(listVars[0] - listVars[1], "none"), false, -1, null);
             },
             Constraints = _ => true
         };
@@ -306,7 +322,7 @@ namespace IntervalEval
             Function = (variables, _) =>
             {
                 var listVars = variables.Solutions.ToList();
-                return new Tuple<Interval, bool, int, IEnumerable<Interval>>(listVars.Count != 3 ? Interval.FromInfSup(double.NaN, double.NaN) : IntervalHelpers.XLog(listVars[0] + listVars[1], "none") + IntervalHelpers.XLog(listVars[0] - listVars[2], "none"), false, -1, null);
+                return new Tuple<Interval, bool, int, IEnumerable<Interval>>(listVars.Count != 3 ? Interval.FromInfSup(double.NaN, double.NaN) : IntervalMath.XLog(listVars[0] + listVars[1], "none") + IntervalMath.XLog(listVars[0] - listVars[2], "none"), false, -1, null);
             },
             Constraints = _ => true
         };
@@ -317,32 +333,33 @@ namespace IntervalEval
             ProblemConstraintsDescription = "",
             Function = (variables, optionalArguments) =>
             {
-                if (optionalArguments.Count != 2)
+                if (optionalArguments.Count != 3)
                     return new Tuple<Interval, bool, int, IEnumerable<Interval>>(Interval.FromInfSup(double.NaN, double.NaN), false, -1, null);
                 if(!(optionalArguments[0] is Tuple<double, double>)) return new Tuple<Interval, bool, int, IEnumerable<Interval>>(Interval.FromInfSup(double.NaN, double.NaN), false, -1, null);
                 if(!(optionalArguments[1] is Tuple<double, double>)) return new Tuple<Interval, bool, int, IEnumerable<Interval>>(Interval.FromInfSup(double.NaN, double.NaN), false, -1, null);
                 
-                var (item1, item2) = (Tuple<double, double>) optionalArguments[0];
-                var (item3, item4) = (Tuple<double, double>) optionalArguments[1];
+                var (p11Squared, p12Squared) = (Tuple<double, double>) optionalArguments[0];
+                var (p21Squared, p22Squared) = (Tuple<double, double>) optionalArguments[1];
+                var (probabilityP1, probabilityP2) = (Tuple<double, double>) optionalArguments[2];
 
                 const double p1 = 0.1;
                 const double p2 = 0.9;
                 
-                var y1A = item1 * p1;
-                var y1B = Math.Sqrt(item1 * item2) * p1;
-                var y1C = item2 * p1;
+                var y1A = p11Squared * p1;
+                var y1B = Math.Sqrt(p11Squared * p12Squared) * p1;
+                var y1C = p12Squared * p1;
                 
-                var y2A = item3 * p2;
-                var y2B = Math.Sqrt(item3 * item4) * p2;
-                var y2C = item4 * p2;
+                var y2A = p21Squared * p2;
+                var y2B = Math.Sqrt(p21Squared * p22Squared) * p2;
+                var y2C = p22Squared * p2;
 
                 var listVars = variables.Solutions.ToList();
                 
                 return listVars.Count != 3
                     ? new Tuple<Interval, bool, int, IEnumerable<Interval>>(Interval.Empty, false, -1, null)
-                    : IntervalHelpers.MutualInformation(
+                    : MutualInfoHelpers2Variables.MutualInformation(
                         listVars[0], listVars[1], listVars[2],
-                        y1A, y1B, y1C, y2A, y2B, y2C
+                        y1A, y1B, y1C, y2A, y2B, y2C, probabilityP1, probabilityP2
                         , variables.GradientTagged, variables.GradientSolution, variables.Gradient);
             },
             Constraints = variables =>
@@ -364,8 +381,8 @@ namespace IntervalEval
                 var ctr5 = -listVars[2];
                 var ctr6 = listVars[2] - 1;
                 // Positive semi-definite
-                var ctr7 = -listVars[0] * listVars[2] + IntSharp.Math.Sqr(listVars[1]);
-                var ctr8 = -(1 - listVars[0]) * (1 - listVars[2]) + IntSharp.Math.Sqr(- listVars[1]);
+                var ctr7 = -listVars[0] * listVars[2] + Core.IntervalMath.Sqr(listVars[1]);
+                var ctr8 = -(1 - listVars[0]) * (1 - listVars[2]) + Core.IntervalMath.Sqr(- listVars[1]);
                 // Purity one
                 var ctr9 = (listVars[0] + listVars[2] - 1);
 
@@ -535,7 +552,7 @@ namespace IntervalEval
 
                 return listVars.Count != 6
                     ? new Tuple<Interval, bool, int, IEnumerable<Interval>>(Interval.FromInfSup(double.NaN, double.NaN), false, -1, null)
-                    :  IntervalHelpers.MutualInformation3Vars(listVars[0], listVars[1], listVars[2], Interval.Zero, Interval.Zero, Interval.Zero,
+                    :  MutualInfoHelpers3Variables.MutualInformation3Vars(listVars[0], listVars[1], listVars[2], Interval.Zero, Interval.Zero, Interval.Zero,
                         y1A, y1B, y1C, y2A, y2B, y2C, y3A, y3B, y3C, variables.GradientTagged, variables.GradientSolution, variables.Gradient);
             },
             Constraints = variables =>
@@ -563,9 +580,9 @@ namespace IntervalEval
                 var ctr11 = -listVars[5];
                 var ctr12 = listVars[5] - 1;
                 // // Positive semi-definite
-                var ctr13 = -listVars[0] * listVars[2] + IntSharp.Math.Sqr(listVars[1]);
-                var ctr14 = -listVars[3] * listVars[5] + IntSharp.Math.Sqr(listVars[4]);
-                var ctr15 = -(1 - listVars[0] - listVars[3]) * (1 - listVars[2] - listVars[5]) + IntSharp.Math.Sqr(-listVars[1]-listVars[4]);
+                var ctr13 = -listVars[0] * listVars[2] + Core.IntervalMath.Sqr(listVars[1]);
+                var ctr14 = -listVars[3] * listVars[5] + Core.IntervalMath.Sqr(listVars[4]);
+                var ctr15 = -(1 - listVars[0] - listVars[3]) * (1 - listVars[2] - listVars[5]) + Core.IntervalMath.Sqr(-listVars[1]-listVars[4]);
                 var ctr16 = (listVars[0] + listVars[2] - 1);
                 var ctr17 = (listVars[3] + listVars[5] - 1);
                
@@ -778,7 +795,7 @@ namespace IntervalEval
                 return listVars.Count != 6
                     ? new Tuple<Interval, bool, int, IEnumerable<Interval>>(Interval.FromInfSup(double.NaN, double.NaN), false, -1, null)
                     // : Interval.Zero;
-                    : IntervalHelpers.MutualInformation3Vars(
+                    : MutualInfoHelpers3Variables.MutualInformation3Vars(
                         listVars[0], listVars[1], listVars[2], listVars[3], listVars[4], listVars[5], 
                         y1A, y1B, y1C, y2A, y2B, y2C, y3A, y3B, y3C, variables.GradientTagged, variables.GradientSolution, variables.Gradient);
 
@@ -808,9 +825,9 @@ namespace IntervalEval
                 var ctr11 = -listVars[5];
                 var ctr12 = listVars[5] - 1;
                 // // Positive semi-definite
-                var ctr13 = -listVars[0] * listVars[2] + IntSharp.Math.Sqr(listVars[1]);
-                var ctr14 = -listVars[3] * listVars[5] + IntSharp.Math.Sqr(listVars[4]);
-                var ctr15 = -(1 - listVars[0] - listVars[3]) * (1 - listVars[2] - listVars[5]) + IntSharp.Math.Sqr(-listVars[1]-listVars[4]);
+                var ctr13 = -listVars[0] * listVars[2] + Core.IntervalMath.Sqr(listVars[1]);
+                var ctr14 = -listVars[3] * listVars[5] + Core.IntervalMath.Sqr(listVars[4]);
+                var ctr15 = -(1 - listVars[0] - listVars[3]) * (1 - listVars[2] - listVars[5]) + Core.IntervalMath.Sqr(-listVars[1]-listVars[4]);
                 var ctr16 = (listVars[0] + listVars[2] - 1);
                 
                 

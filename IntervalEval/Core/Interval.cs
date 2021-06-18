@@ -6,7 +6,7 @@ using System.Linq;
 // ReSharper disable CompareOfFloatsByEqualityOperator
 // File-scope due to multiple operator overloadings
 
-namespace IntSharp.Types
+namespace IntervalEval.Core
 {
     /// <summary>
     /// Base type for the whole library
@@ -191,7 +191,7 @@ namespace IntSharp.Types
             }
 
             return $"{roundedMid.ToString(CultureInfo.InvariantCulture)} ± " +
-                          $"{roundedRadius.ToString(CultureInfo.InvariantCulture)}";
+                   $"{roundedRadius.ToString(CultureInfo.InvariantCulture)}";
         }
 
         /// <summary>

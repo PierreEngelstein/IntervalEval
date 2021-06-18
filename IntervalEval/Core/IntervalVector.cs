@@ -2,7 +2,7 @@
 using System.Linq;
 using MathNet.Numerics.LinearAlgebra;
 
-namespace IntSharp.Types
+namespace IntervalEval.Core
 {
     /// <summary>
     /// Common vector implementation for the interval type

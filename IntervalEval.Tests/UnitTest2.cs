@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using IntSharp.Types;
+using IntervalEval.Core;
+using IntervalEval.Core.Helpers;
+using IntervalEval.Core.Optimize;
 using NUnit.Framework;
 
 namespace IntervalEval.Tests

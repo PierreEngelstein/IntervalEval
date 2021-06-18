@@ -1,14 +1,12 @@
 @page "/tracefunction"
 @using Plotly.Blazor.Traces.ScatterLib
-@using IntSharp.Types
 @using IntervalEval
 @using Plotly.Blazor.LayoutLib
 @using System.Threading
 @using System.Diagnostics
 @using System.Drawing
-@using IntSharp
-@using IntSharp.Types
-@using Math = IntSharp.Math
+@using IntervalEval.Core
+@using Math = IntervalEval.Core.IntervalMath
 
 <PlotlyChart @bind-Config="@_config" @bind-Layout="@_layout" @bind-Data="@_data" @ref="_chart"/>
 

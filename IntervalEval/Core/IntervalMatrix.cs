@@ -1,7 +1,7 @@
 ﻿using System;
 using MathNet.Numerics.LinearAlgebra;
 
-namespace IntSharp.Types
+namespace IntervalEval.Core
 {
     /// <summary>
     /// Common matrix implementation for the interval type

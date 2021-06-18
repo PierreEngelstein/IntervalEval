@@ -4,18 +4,16 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using IntSharp;
-using IntSharp.Types;
-using Math = System.Math;
+using IntervalEval.Core.Helpers;
 
-namespace IntervalEval
+namespace IntervalEval.Core.Optimize
 {
     public enum OptimizationType
     {
         Minimization = 0,
         Maximization = 1
     }
-    
+
     public static class Optimizer
     {
         public static readonly TypeListener<int> OptimizationIterations = new();
@@ -47,7 +45,7 @@ namespace IntervalEval
             bool debug = false,
             List<object> additionalArguments = null,
             CancellationToken token = default
-            )
+        )
         {
             EvolutionBoxesAmount.Value = new List<double>();
             EvolutionVolumeBoxesByCategory.Value = new List<Dictionary<int, double>>();
@@ -56,7 +54,11 @@ namespace IntervalEval
             // List of current leaves to be processed
             var currentList = new List<OptimizerSolution> {new(enumerable, false, -1, null)};
             var sw = new Stopwatch();
+            PrecisionF.Value = double.PositiveInfinity;
+            // Console.WriteLine($"precisionF.value = {PrecisionF.Value}");
+            // for (OptimizationIterations.Value = 0; PrecisionF.Value >= 0.001; OptimizationIterations.Value++)
             for (OptimizationIterations.Value = 0; OptimizationIterations.Value <= iterations ; OptimizationIterations.Value++)
+                // while(PrecisionF.Value >= 0.001)
             {
                 if (token.IsCancellationRequested) return new List<OptimizerSolution>(); // Cancel operation if asked
                 if(debug) Console.WriteLine($"Iteration {OptimizationIterations.Value}");
@@ -150,13 +152,20 @@ namespace IntervalEval
                 });
                 sw.Stop();
                 if(tokenCancelled) return new List<OptimizerSolution>(); // Cancel operation if asked
-                Console.WriteLine($"Leaf Processing: {sw.ElapsedMilliseconds} ms");
+                if(debug) Console.WriteLine($"Leaf Processing: {sw.ElapsedMilliseconds} ms");
                 
                 var correctList = new List<OptimizerSolution>();
                 if(listImages.Count != 0)
                 {
-                    IntervalFMinimum.Value = listImages[0].Infimum;
-                    IntervalFMaximum.Value = listImages[0].Supremum;
+                    var min = double.PositiveInfinity;
+                    var max = double.NegativeInfinity;
+                    foreach (var listImage in listImages)
+                    {
+                        if (listImage.Infimum <= min && !double.IsNaN(listImage.Infimum)) min = listImage.Infimum;
+                        if (listImage.Supremum >= max && !double.IsNaN(listImage.Supremum)) max = listImage.Supremum;
+                    }
+                    IntervalFMinimum.Value = min;
+                    IntervalFMaximum.Value = max;
                 }
                 else
                 {
@@ -207,14 +216,14 @@ namespace IntervalEval
                 }
                 sw.Stop();
                 if(debug) Console.WriteLine($"Removed {nextList.Count - correctList.Count} / {nextList.Count} boxes in {sw.ElapsedMilliseconds} ms");
-                Console.WriteLine($"Out of bounds removal: {sw.ElapsedMilliseconds} ms");
+                if(debug) Console.WriteLine($"Out of bounds removal: {sw.ElapsedMilliseconds} ms");
                 // PrecisionF.Value = Math.Abs(IntervalFMaximum.Value - IntervalFMinimum.Value);
-                PrecisionF.Value = Math.Abs(IntervalFMaximum.Value - IntervalFMinimum.Value) / IntervalFMaximum.Value;
+                PrecisionF.Value = System.Math.Abs(IntervalFMaximum.Value - IntervalFMinimum.Value) / IntervalFMaximum.Value;
                 // Assign new list of leaves to the current one, and follow with new processing
                 currentList.Clear();
                 currentList = correctList;
                 currentList.AddRange(uncertainList);
-                Console.WriteLine($"correct: {correctList.Count} ; uncertain: {uncertainList.Count}");
+                if(debug) Console.WriteLine($"correct: {correctList.Count} ; uncertain: {uncertainList.Count}");
 
                 var currentEvolutionBoxesAmount = EvolutionBoxesAmount.Value;
                 currentEvolutionBoxesAmount.Add(currentList.Count + uncertainList.Count);

@@ -4,10 +4,21 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using IntSharp.Types;
+using IntervalEval.Core;
+using IntervalEval.Core.Helpers;
+using IntervalEval.Core.Optimize;
 
 namespace IntervalEval
 {
+    internal class ConfigurationInterval
+    {
+        public double Infimum { get; set; }
+        public double Supremum { get; set; }
+    }
+    internal class ConfigurationIntervalProbability : ConfigurationInterval
+    {
+        public double Probability { get; set; }
+    }
     /// <summary>
     /// Configuration class for optimizer
     /// </summary>
@@ -16,11 +27,11 @@ namespace IntervalEval
         // Are we running the optimizer with debug printing or not ?
         public bool Debug { get; set; }
         
-        // List of squared input quantum state
-        public List<Tuple<double, double>> Rho { get; set; }
+        // List of squared input quantum state (last double is the probability of the state)
+        public List<ConfigurationIntervalProbability> Rho { get; set; }
         
         // Input ranges for variables
-        public List<Tuple<double, double>> Ranges { get; set; }
+        public List<ConfigurationInterval> Ranges { get; set; }
         
         // How many iteration the optimizer should run ?
         public int IterationAmount { get; set; }
@@ -31,7 +42,8 @@ namespace IntervalEval
             return $"[Debug: {Debug}, Rho1: {Rho}, IterationAmount: {IterationAmount}]";
         }
     }
-    class Program
+
+    internal static class Program
     {
         static void Main(string[] args)
         {
@@ -45,7 +57,8 @@ namespace IntervalEval
             // Setup problem input
             var problem = ProblemDescriptor.Problems3D[1];
             var listInputMi = new List<object>();
-            listInputMi.AddRange(configuration.Rho);
+            listInputMi.AddRange(configuration.Rho.Select(rho => new Tuple<double, double>(rho.Infimum, rho.Supremum)));
+            listInputMi.Add(new Tuple<double, double>(configuration.Rho[0].Probability, configuration.Rho[1].Probability));
             var fMin = 0.0;
             var fMax = 0.0;
             var fPrecision = 0.0;
@@ -83,9 +96,9 @@ namespace IntervalEval
             sw.Start();
             var result = Optimizer.Optimize(new[]
             {
-                Interval.FromInfSup(configuration.Ranges[0].Item1, configuration.Ranges[0].Item2),
-                Interval.FromInfSup(configuration.Ranges[1].Item1, configuration.Ranges[1].Item2),
-                Interval.FromInfSup(configuration.Ranges[2].Item1, configuration.Ranges[2].Item2),
+                Interval.FromInfSup(configuration.Ranges[0].Infimum, configuration.Ranges[0].Supremum),
+                Interval.FromInfSup(configuration.Ranges[1].Infimum, configuration.Ranges[1].Supremum),
+                Interval.FromInfSup(configuration.Ranges[2].Infimum, configuration.Ranges[2].Supremum),
             }, problem.Function, problem.Constraints, OptimizationType.Maximization, configuration.IterationAmount, configuration.Debug, listInputMi);
             sw.Stop();
             Console.WriteLine($"Optimization took {sw.ElapsedMilliseconds} ms");

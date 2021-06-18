@@ -1,6 +1,6 @@
 using System;
 
-namespace IntervalEval
+namespace IntervalEval.Core
 {
     /// <summary>
     /// Wrapper around an object to allow a event to be fired on change.

@@ -3,10 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using IntSharp;
-using IntSharp.Types;
+using IntervalEval.Core;
+using IntervalEval.Core.Helpers;
+using IntervalEval.Core.Optimize;
 using MathNet.Numerics.Optimization;
-using Math = IntSharp.Math;
 
 namespace IntervalEval.FrontConsole
 {
@@ -44,9 +44,9 @@ namespace IntervalEval.FrontConsole
             var height = 2.3;
             IntervalBoolean inside1, inside2;
             Interval Ym1, Ym2, Ym3;
-            Ym1 = 2 * Math.Sin(P[1]) + 1.5 * Math.Sin(P[1] + P[2]) - height;
+            Ym1 = 2 * IntervalMath.Sin(P[1]) + 1.5 * IntervalMath.Sin(P[1] + P[2]) - height;
             inside1 = Ym1.In(Y);
-            Ym2 = 2 * Math.Sin(P[1]) - height;
+            Ym2 = 2 * IntervalMath.Sin(P[1]) - height;
             inside2 = Ym2.In(Y);
             // Ym3 = 2 * Math.Sin(P[3]) - height;
             return inside1 && inside2 && P[1].In(positive);
@@ -122,17 +122,17 @@ namespace IntervalEval.FrontConsole
                 return Interval.Zero;
             }
             
-            var prev = IntervalHelpers.AmountFailXLog;
+            var prev = IntervalMath.AmountFailXLog;
             var result =
-                -IntervalHelpers.XLog(Interval.FromInfSup(p11p12, p11p12), "EX - H(P11 + P12)")
-                -IntervalHelpers.XLog(Interval.FromInfSup(p21p22, p21p22), "EX - H(P21 + P22)")
-                -IntervalHelpers.XLog(p11p21, "EY - H(P11+P21)")
-                -IntervalHelpers.XLog(p12p22, "EY - H(P12 + P22)")
-                +IntervalHelpers.XLog(p11, "EC - H(P11)")
-                +IntervalHelpers.XLog(p12, "EC - H(P12)")
-                +IntervalHelpers.XLog(p21, "EC - H(P21)")
-                +IntervalHelpers.XLog(p22, "EC - H(P22)");
-            var now = IntervalHelpers.AmountFailXLog;
+                -IntervalMath.XLog(Interval.FromInfSup(p11p12, p11p12), "EX - H(P11 + P12)")
+                -IntervalMath.XLog(Interval.FromInfSup(p21p22, p21p22), "EX - H(P21 + P22)")
+                -IntervalMath.XLog(p11p21, "EY - H(P11+P21)")
+                -IntervalMath.XLog(p12p22, "EY - H(P12 + P22)")
+                +IntervalMath.XLog(p11, "EC - H(P11)")
+                +IntervalMath.XLog(p12, "EC - H(P12)")
+                +IntervalMath.XLog(p21, "EC - H(P21)")
+                +IntervalMath.XLog(p22, "EC - H(P22)");
+            var now = IntervalMath.AmountFailXLog;
             if (now != prev)
             {
                 Console.Write("a = ");
@@ -162,27 +162,111 @@ namespace IntervalEval.FrontConsole
             Console.WriteLine($"a = {a} ; b = {b}");
             Console.WriteLine($"P11 = {p11} P12 = {p12}");
             Console.WriteLine($"P21 = {p21} P22 = {p22}");
-            var prev = IntervalHelpers.AmountFailXLog;
+            var prev = IntervalMath.AmountFailXLog;
             var result =
-                -IntervalHelpers.XLog(Interval.FromInfSup(p11+p12, p11+p12), "EX - H(P11 + P12)")
-                -IntervalHelpers.XLog(Interval.FromInfSup(p21 + p22,p21 + p22), "EX - H(P21 + P22)")
-                -IntervalHelpers.XLog(Interval.FromInfSup(p11+p21,p11+p21), "EY - H(P11+P21)")
-                -IntervalHelpers.XLog(Interval.FromInfSup(p12+p22,p12+p22), "EY - H(P12 + P22)")
-                +IntervalHelpers.XLog(Interval.FromInfSup(p11,p11), "EC - H(P11)")
-                +IntervalHelpers.XLog(Interval.FromInfSup(p12,p12), "EC - H(P12)")
-                +IntervalHelpers.XLog(Interval.FromInfSup(p21,p21), "EC - H(P21)")
-                +IntervalHelpers.XLog(Interval.FromInfSup(p22,p22), "EC - H(P22)");
-            var now = IntervalHelpers.AmountFailXLog;
+                -IntervalMath.XLog(Interval.FromInfSup(p11+p12, p11+p12), "EX - H(P11 + P12)")
+                -IntervalMath.XLog(Interval.FromInfSup(p21 + p22,p21 + p22), "EX - H(P21 + P22)")
+                -IntervalMath.XLog(Interval.FromInfSup(p11+p21,p11+p21), "EY - H(P11+P21)")
+                -IntervalMath.XLog(Interval.FromInfSup(p12+p22,p12+p22), "EY - H(P12 + P22)")
+                +IntervalMath.XLog(Interval.FromInfSup(p11,p11), "EC - H(P11)")
+                +IntervalMath.XLog(Interval.FromInfSup(p12,p12), "EC - H(P12)")
+                +IntervalMath.XLog(Interval.FromInfSup(p21,p21), "EC - H(P21)")
+                +IntervalMath.XLog(Interval.FromInfSup(p22,p22), "EC - H(P22)");
+            var now = IntervalMath.AmountFailXLog;
             if (now != prev)
             {
                 failedBoxes++;
             }
             return result;
         }
-        
+
         static void Main(string[] args)
         {
-            var it = Math.Sqr(Interval.FromInfSup(2, 3) - Interval.FromInfSup(-4, 5)) + Interval.FromInfSup(-3, 2);
+            var problem = ProblemDescriptor.Problems3D[1];
+            var durations = new List<double>();
+            var angles = new List<double>();
+            var fMin = 0.0;
+            var fMax = 0.0;
+            var fPrecision = 0.0;
+
+            for (var i = 10; i <= 360; i++)
+            {
+                var angle = i * System.Math.PI / 180.0;
+                angles.Add(angle);
+                Console.WriteLine($"angle: {i} degrees");
+                var p1 = new Tuple<double, double>(1.0, 0.0);
+                var p2 = new Tuple<double, double>(System.Math.Cos(angle) * System.Math.Cos(angle), System.Math.Sin(angle) * System.Math.Sin(angle));
+                Console.WriteLine(p2);
+                var listInputMi = new List<object>{p1, p2};
+
+                Optimizer.PrecisionF.OnChange += (_, d) =>
+                {
+                    if (double.IsNaN(d))
+                    {
+                        Console.WriteLine("[WARNING] NaN precision !");
+                        return;
+                    }
+                    Console.WriteLine($"precision = {fPrecision}");
+                    Console.WriteLine($"angle: {i} degrees");
+                    fPrecision = d;
+                };
+                // Optimizer.IntervalFMinimum.OnChange += (_, d) =>
+                // {
+                //     if(double.IsNaN(d)) return;
+                //     fMin = d;
+                //     Console.WriteLine($"fMin = {fMin}");
+                // };
+                // Optimizer.IntervalFMaximum.OnChange += (_, d) =>
+                // {
+                //     if(double.IsNaN(d)) return;
+                //     fMax = d;
+                //     Console.WriteLine($"fMax = {fMax}");
+                // };
+                Optimizer.EvolutionBoxesAmount.OnChange += (_, boxes) =>
+                {
+                    if (!boxes.Any()) return;
+                    Console.WriteLine($"{boxes.Count - 1} => {boxes[^1]}");
+                    var proc = Process.GetCurrentProcess();
+                    var mem = proc.PrivateMemorySize64 / (1024.0*1024.0);
+                    Console.WriteLine($"RAM usage: {mem} MB");
+                    Console.WriteLine($"angle: {i} degrees");
+                    Console.WriteLine("===================");
+                };
+                
+                var sw = new Stopwatch();
+                sw.Restart();
+                var result = Optimizer.Optimize(new[]
+                {
+                    Interval.FromInfSup(-2, 2),
+                    Interval.FromInfSup(-2, 2),
+                    Interval.FromInfSup(-2, 2),
+                }, problem.Function, problem.Constraints, OptimizationType.Maximization, 50, false, listInputMi);
+                sw.Stop();
+                Console.WriteLine($"Optimization took {sw.ElapsedMilliseconds} ms");
+                Console.WriteLine($"f in [{Optimizer.IntervalFMinimum.Value}, {Optimizer.IntervalFMaximum.Value}]");
+                durations.Add(sw.ElapsedMilliseconds);
+            }
+
+            Optimizer.OptimizationIterations.Value = 0;
+            Optimizer.PrecisionF.Value = 0;
+            Optimizer.IntervalFMaximum.Value = 0;
+            Optimizer.IntervalFMinimum.Value = 0;
+            
+            
+            foreach (var angle in angles)
+            {
+                Console.Write($"{angle}, ");
+            }
+            Console.WriteLine("\n==========\n");
+            foreach (var duration in durations)
+            {
+                Console.Write($"{duration}, ");
+            }
+        }
+        
+        static void Main1(string[] args)
+        {
+            var it = IntervalMath.Sqr(Interval.FromInfSup(2, 3) - Interval.FromInfSup(-4, 5)) + Interval.FromInfSup(-3, 2);
             IntervalHelpers.Print(it);
             return;
             // Testing x*log(x) undefined sections in mutual information

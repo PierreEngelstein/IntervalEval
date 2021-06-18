@@ -1,10 +1,11 @@
 @page "/mutualinfo"
-@using IntSharp.Types
 @using IntervalEval
 @using Plotly.Blazor.LayoutLib
-@using IntSharp
 @using Plotly.Blazor.Traces.Mesh3DLib
 @using System.Drawing
+@using IntervalEval.Core
+@using IntervalEval.Core.Helpers
+@using IntervalEval.Core.MutualInformationProblem
 
 <PlotlyChart @bind-Config="@_config" @bind-Layout="@_layout" @bind-Data="@_data" @ref="_chart"/>
 
@@ -56,7 +57,7 @@
             {
                 // Console.WriteLine($"i={i}, j={j}");
                 var itB = bCut[j];
-                var (it, _, _, _) = IntervalHelpers.MutualInformation(itA, itB, Interval.FromDoublePrecise(0.2), y1A, y1B, y1C, y2A, y2B, y2C, false, -1, null);
+                var (it, _, _, _) = MutualInfoHelpers2Variables.MutualInformation(itA, itB, Interval.FromDoublePrecise(0.2), y1A, y1B, y1C, y2A, y2B, y2C, 0.1, 0.9, false, -1, null);
                 if (it.IsEmpty() || double.IsNaN(it.Infimum) || double.IsNaN(it.Supremum) || double.IsInfinity(it.Infimum) || double.IsInfinity(it.Supremum))
                 {
                     _data.Add(new Mesh3D // 3D: draw a cube

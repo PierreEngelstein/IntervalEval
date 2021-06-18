@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using IntervalEval;
-using IntSharp.Types;
+using System.Linq;
+using IntervalEval.Core.Helpers;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Double;
+using Utility = IntervalEval.Core.Utility;
 
-namespace IntSharp
+namespace IntervalEval.Core
 {
     /// <summary>
     /// Contains multiple convinience methods for using the interval type
@@ -132,7 +133,7 @@ namespace IntSharp
         /// </summary>
         public static double Mag(this Interval i)
         {
-            return Math.Abs(i).Supremum;
+            return IntervalMath.Abs(i).Supremum;
         }
 
         /// <summary>
@@ -180,7 +181,7 @@ namespace IntSharp
         /// </summary>
         public static double Mig(this Interval i)
         {
-            return Math.Abs(i).Infimum;
+            return IntervalMath.Abs(i).Infimum;
         }
 
         /// <summary>
@@ -247,6 +248,65 @@ namespace IntSharp
 
             return new Tuple<Interval, Interval>(l,r);
         }
+        
+        /// <summary>
+        /// Bisects a box in the middle by its largest width
+        /// </summary>
+        /// <param name="input">Box input</param>
+        /// <returns>Left and right boxes</returns>
+        public static Tuple<IEnumerable<Interval>, IEnumerable<Interval>> Bisect(this IEnumerable<Interval> input)
+        {
+            var enumerable = input as List<Interval> ?? input.ToList();
+            var largestWidth = enumerable[0].Diam();
+            var largest = enumerable[0];
+            foreach (var interval in enumerable.Where(interval => interval.Diam() >= largestWidth))
+            {
+                largestWidth = interval.Diam();
+                largest = interval;
+            }
+            var (left, right) = largest.Bisect();
+            var bisectIndex = enumerable.IndexOf(largest);
+            var rightBox = enumerable.ToList();
+            var leftBox = enumerable.ToList();
+            rightBox[bisectIndex] = right;
+            leftBox[bisectIndex] = left;
+            return new Tuple<IEnumerable<Interval>, IEnumerable<Interval>>(leftBox, rightBox);
+        }
+        
+        /// <summary>
+        /// Bisects a box by a certain percentage, by its largest width
+        /// </summary>
+        /// <param name="input">Box input</param>
+        /// <param name="percent">Where to cut ?</param>
+        /// <returns>Left and right boxes</returns>
+        public static Tuple<IEnumerable<Interval>, IEnumerable<Interval>> Bisect(this IEnumerable<Interval> input, double percent)
+        {
+            var enumerable = input as List<Interval> ?? input.ToList();
+            var largestWidth = enumerable[0].Diam();
+            var largest = enumerable[0];
+            foreach (var interval in enumerable.Where(interval => interval.Diam() >= largestWidth))
+            {
+                largestWidth = interval.Diam();
+                largest = interval;
+            }
+            var (left, right) = largest.Bisect(percent);
+            var bisectIndex = enumerable.IndexOf(largest);
+            var rightBox = enumerable.ToList();
+            var leftBox = enumerable.ToList();
+            rightBox[bisectIndex] = right;
+            leftBox[bisectIndex] = left;
+            return new Tuple<IEnumerable<Interval>, IEnumerable<Interval>>(leftBox, rightBox);
+        }
+        
+        /// <summary>
+        /// Gets the middle point of a box.
+        /// </summary>
+        /// <param name="input">Box input</param>
+        /// <returns>Box containing the middle point (each interval has low_bound=maximum=middle)</returns>
+        public static IEnumerable<Interval> Middle(this IEnumerable<Interval> input)
+        {
+            return input.Select(interval => Interval.FromInfSup(interval.Mid(), interval.Mid())).ToList();
+        }
 
         /// <summary>
         /// Returns the intersection of the two intervals: The interval that both intervals have in common.
@@ -255,8 +315,8 @@ namespace IntSharp
         {
             if(i.Disjoint(otherInterval)) throw new Exception("Intersection is empty because the intervals are disjoint.");
 
-            var infimum = System.Math.Max(i.Infimum, otherInterval.Infimum);
-            var supremum = System.Math.Min(i.Supremum, otherInterval.Supremum);
+            var infimum = Math.Max(i.Infimum, otherInterval.Infimum);
+            var supremum = Math.Min(i.Supremum, otherInterval.Supremum);
 
             return Interval.FromInfSup(infimum, supremum);
         }
@@ -278,6 +338,27 @@ namespace IntSharp
             }
 
             return intervals;
+        }
+
+        public static double MaxWidth(this IEnumerable<IEnumerable<Interval>> listOfVariables)
+        {
+            var enumerable = listOfVariables as List<IEnumerable<Interval>> ?? listOfVariables.ToList();
+            if (enumerable.Count == 0) return 0.0;
+            var largestWidth = enumerable[0].MaxWidth();
+            foreach (var intervals in enumerable.Where(interval => Utility.MaxWidth(interval) >= largestWidth))
+                largestWidth = intervals.MaxWidth();
+            return largestWidth;
+        }
+
+        public static double MaxWidth(this IEnumerable<Interval> input)
+        {
+            var enumerable = input as List<Interval> ?? input.ToList();
+            if (enumerable.Count == 0) return 0.0;
+            var largestWidth = enumerable[0].Diam();
+            foreach (var interval in enumerable.Where(interval => interval.Diam() >= largestWidth))
+                largestWidth = interval.Diam();
+
+            return largestWidth;
         }
     }
 }

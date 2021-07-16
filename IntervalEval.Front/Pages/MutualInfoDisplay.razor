@@ -6,6 +6,7 @@
 @using IntervalEval.Core
 @using IntervalEval.Core.Helpers
 @using IntervalEval.Core.MutualInformationProblem
+@using System.Collections
 
 <PlotlyChart @bind-Config="@_config" @bind-Layout="@_layout" @bind-Data="@_data" @ref="_chart"/>
 
@@ -29,8 +30,8 @@
 
         var a = Interval.FromInfSup(-0.1, 0.5);
         var b = Interval.FromInfSup(-0.1, 1);
-        var aCut = a.Cut(60);
-        var bCut = b.Cut(60);
+        var aCut = a.Cut(30);
+        var bCut = b.Cut(30);
 
         const double p1 = 0.1;
         const double p2 = 0.9;
@@ -49,6 +50,7 @@
 
         var colorStart = new Tuple<byte, byte, byte>(0x1f, 0x77, 0xb4);
         var colorEnd = new Tuple<byte, byte, byte>(0x2c, 0xa0, 0x2c);
+        var itD = Interval.FromDoublePrecise(0.2);
 
         for (var i = 0; i < aCut.Count; i++)
         {
@@ -57,7 +59,21 @@
             {
                 // Console.WriteLine($"i={i}, j={j}");
                 var itB = bCut[j];
-                var (it, _, _, _) = MutualInfoHelpers2Variables.MutualInformation(itA, itB, Interval.FromDoublePrecise(0.2), y1A, y1B, y1C, y2A, y2B, y2C, 0.1, 0.9, false, -1, null);
+                var aPivot = itA.Infimum;
+                var bPivot = itB.Infimum;
+                var dPivot = itD.Infimum;
+                for (var k = 0; k < 8; k++)
+                {
+                    var bitArray = new BitArray(new[] {k});
+                    if(bitArray[2] || bitArray[1] || bitArray[0]) Console.WriteLine($"{bitArray[2]}, {bitArray[1]}, {bitArray[0]}");
+                    aPivot = bitArray[0] ? itA.Infimum : itA.Supremum;
+                    bPivot = bitArray[0] ? itA.Infimum : itA.Supremum;
+                    dPivot = bitArray[0] ? itA.Infimum : itA.Supremum;
+                    var ctr1 = aPivot * dPivot - bPivot * bPivot;
+                    var ctr2 = (1-aPivot) * (1-dPivot) - (-bPivot) * (-bPivot);
+                    if (ctr1 >= 0 && ctr2 >= 0) break;
+                }
+                var (it, _, _, _) = MutualInfoHelpers2Variables.MutualInformation(itA, itB, itD, y1A, y1B, y1C, y2A, y2B, y2C, 0.1, 0.9, itA.Infimum, itB.Infimum, itD.Infimum, false, -1, null);
                 if (it.IsEmpty() || double.IsNaN(it.Infimum) || double.IsNaN(it.Supremum) || double.IsInfinity(it.Infimum) || double.IsInfinity(it.Supremum))
                 {
                     _data.Add(new Mesh3D // 3D: draw a cube

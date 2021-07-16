@@ -6,6 +6,7 @@ using System.Linq;
 using IntervalEval.Core;
 using IntervalEval.Core.Helpers;
 using IntervalEval.Core.Optimize;
+using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.Optimization;
 
 namespace IntervalEval.FrontConsole
@@ -182,6 +183,24 @@ namespace IntervalEval.FrontConsole
 
         static void Main(string[] args)
         {
+
+            // var var1 = Interval.FromInfSup(6, 9);
+            // var var2 = Interval.FromInfSup(4, 9);
+            // var var3 = Interval.FromInfSup(2, 3);
+            // var var4 = Interval.FromInfSup(1, 3.215);
+            // var var5 = Interval.FromInfSup(4, 6.964);
+            // var var6 = Interval.FromInfSup(10, 12.123);
+            // Console.WriteLine(IntervalMath.Sqr(var3) + 2*var3 + 2*2);
+            
+            var currentMatrix = Matrix<double>.Build.Dense(3, 3);
+
+            currentMatrix[0, 2] = 1;
+            
+            Console.WriteLine(currentMatrix);
+            
+            // Console.WriteLine(var3 - IntervalMath.Sqr(var3) + 2*var3 + 2 - 4);
+
+            return;
             var problem = ProblemDescriptor.Problems3D[1];
             var durations = new List<double>();
             var angles = new List<double>();

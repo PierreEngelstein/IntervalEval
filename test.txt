@@ -1,0 +1,72 @@
+            var listJointEntropyCoefficients = new List<Interval>();
+            var listJointEntropySlopes = new List<Interval>();
+            var listEntropyMCoefficients = new List<Interval>();
+            var listEntropyMSlopes = new List<Interval>();
+            double fy = 0.0;
+
+            var _lastA = Interval.Zero;
+            var _lastB = Interval.Zero;
+            var _lastD = Interval.Zero;
+            var _lastCT = Interval.Zero;
+            for (var k = 0; k <= maxK; k++)
+            {
+                var currentMeasurementOperator = measurementOperator[k];
+                var a = currentMeasurementOperator[0];
+                var b = currentMeasurementOperator[1];
+                var d = currentMeasurementOperator[2];
+                
+                _lastA -= a;
+                _lastB -= 2*b;
+                _lastD -= d;
+                _lastCT += a + d;
+                
+                var currentEntropyA = Interval.Zero;
+                var currentEntropyB = Interval.Zero;
+                var currentEntropyD = Interval.Zero;
+                
+                for (var j = 0; j <= maxJ; j++)
+                {
+                    var currentDensityOperator = densityOperator[j];
+                    var densityA = currentDensityOperator[0];
+                    var densityB = currentDensityOperator[1];
+                    var densityD = currentDensityOperator[2];
+                    
+                    // Entropy of Y, simplified to avoid 
+                    currentEntropyA += densityA;
+                    currentEntropyB += 2*densityB;
+                    currentEntropyD += densityD;
+                    
+                    var product = a * densityA + 2 * b * densityB + d * densityD;
+                    listJointEntropyCoefficients.Add(product);
+                    listJointEntropySlopes.Add(densityA * (a - a.Infimum) + 2*densityB*(b - b.Infimum) + densityD * (d - d.Infimum) );
+                    fy += IntervalMath.XLog(product.Infimum);
+                }
+                
+                listEntropyMSlopes.Add(currentEntropyA * (a - a.Infimum) + currentEntropyB * (b - b.Infimum) + currentEntropyD * (d - d.Infimum));
+                var productM = IntervalMath.XLog(currentEntropyA*a + currentEntropyB*b + currentEntropyD*d);
+                listEntropyMCoefficients.Add(productM);
+
+            }
+
+            {
+                var currentEntropyA = Interval.Zero;
+                var currentEntropyB = Interval.Zero;
+                var currentEntropyD = Interval.Zero;
+                for (var j = 0; j <= maxJ; j++)
+                {
+                    var currentDensityOperator = densityOperator[j];
+                    var densityA = currentDensityOperator[0];
+                    var densityB = currentDensityOperator[1];
+                    var densityD = currentDensityOperator[2];
+                    currentEntropyA = densityA;
+                    currentEntropyB = 2*densityB;
+                    currentEntropyD = densityD;
+                    var lastProduct = _lastA * densityA + 2 * _lastB * densityB + _lastD * densityD;
+                    listJointEntropyCoefficients.Add(lastProduct);
+                    listJointEntropySlopes.Add(densityA * (_lastA - _lastA.Infimum) + 2*densityB*(_lastA - _lastA.Infimum) + densityD * (_lastA - _lastA.Infimum) );
+                }
+                listEntropyMSlopes.Add(currentEntropyA * (_lastA - _lastA.Infimum) + currentEntropyB * (_lastB - _lastB.Infimum) + currentEntropyD * (_lastD - _lastD.Infimum));
+                var productM = IntervalMath.XLog(currentEntropyA*_lastA + currentEntropyB*_lastB + currentEntropyD*_lastD);
+                listEntropyMCoefficients.Add(productM);
+            }
+

@@ -40,27 +40,7 @@ namespace IntervalEval.Core
         /// </summary>
         public static Interval FromInfSup(double inf, double sup)
         {
-            // Filter swapped inf/sup.
-            // if (inf > sup) throw new Exception("An infimum greater than the supremum is invalid.");
-            
-            // Swap inf and sup if necessary, instead of just throwing them out
-            if (inf > sup)
-            {
-                var tmp = sup;
-                sup = inf;
-                inf = tmp;
-            }
-            // // Filter [+inf,+inf] and [-inf,-inf].
-            // if (double.IsPositiveInfinity(inf) && double.IsPositiveInfinity(sup))
-            //     throw new Exception("[ +inf , +inf ] is an invalid interval.");
-            // if (double.IsNegativeInfinity(inf) && double.IsNegativeInfinity(sup))
-            //     throw new Exception("[ +inf , +inf ] is an invalid interval.");
-            //
-            // // Filter NaN.
-            // if (double.IsNaN(inf)) throw new Exception("double.NaN is an invalid infimum.");
-            // if (double.IsNaN(sup)) throw new Exception("double.NaN is an invalid supremum.");
-
-            return new Interval(inf, sup);
+            return inf > sup ? new Interval(sup, inf) : new Interval(inf, sup);
         }
 
         /// <summary>
@@ -93,7 +73,10 @@ namespace IntervalEval.Core
             if (double.IsNegativeInfinity(value)) throw new Exception("[ -inf , -inf ] is an invalid interval.");
 
             // Filter NaN.
-            if (double.IsNaN(value)) throw new Exception("[ double.NaN , double.NaN ] is an invalid interval.");
+            // if (double.IsNaN(value)) throw new Exception("[ double.NaN , double.NaN ] is an invalid interval.");
+            
+            // Return Empty when NaN
+            if (double.IsNaN(value)) return Empty;
 
             return new Interval(value, value);
         }
@@ -297,14 +280,28 @@ namespace IntervalEval.Core
 
             return lhsInterval * rhs;
         }
+        
         public static Interval operator /(Interval lhs, Interval rhs)
         {
-            if (rhs.ContainsZero()) throw new DivideByZeroException();
+            if (lhs.IsEmpty() || rhs.IsEmpty()) return Empty;
 
-            var infFactor = (1 / rhs.Supremum).InflateDown();
-            var supFactor = (1 / rhs.Infimum).InflateUp();
-
-            return lhs * FromInfSup(infFactor, supFactor);
+            if (rhs.Infimum == 0 && rhs.Supremum == 0)
+                return Empty;
+            if (rhs.Infimum != 0 && rhs.Supremum != 0 && (0 < rhs.Infimum && 0 > rhs.Supremum))
+                return lhs * new Interval(1 / rhs.Supremum, 1 / rhs.Infimum);
+            if (rhs.Infimum != 0 && rhs.Supremum != 0 && (0 > rhs.Infimum && 0 < rhs.Supremum))
+                return Entire;
+            if (rhs.Infimum == 0 && rhs.Supremum != 0) 
+                return lhs * new Interval(1 / rhs.Supremum, double.PositiveInfinity);
+            if (rhs.Infimum != 0 && rhs.Supremum == 0)
+                return lhs * new Interval(double.NegativeInfinity, 1 / rhs.Infimum);
+            return Empty;
+            // if (rhs.ContainsZero()) throw new DivideByZeroException();
+            //
+            // var infFactor = (1 / rhs.Supremum).InflateDown();
+            // var supFactor = (1 / rhs.Infimum).InflateUp();
+            //
+            // return lhs * FromInfSup(infFactor, supFactor);
         }
         public static Interval operator /(Interval lhs, double rhs)
         {

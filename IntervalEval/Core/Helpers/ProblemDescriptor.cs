@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using IntervalEval.Core.MutualInformationProblem;
@@ -352,14 +353,30 @@ namespace IntervalEval.Core.Helpers
                 var y2A = p21Squared * p2;
                 var y2B = Math.Sqrt(p21Squared * p22Squared) * p2;
                 var y2C = p22Squared * p2;
-
+                
                 var listVars = variables.Solutions.ToList();
+                
+                var aPivot = listVars[0].Infimum;
+                var bPivot = listVars[1].Infimum;
+                var dPivot = listVars[2].Infimum;
+                for (var k = 0; k < 8; k++)
+                {
+                    var bitArray = new BitArray(new[] {k});
+                    aPivot = bitArray[0] ? listVars[0].Infimum : listVars[0].Supremum;
+                    bPivot = bitArray[0] ? listVars[0].Infimum : listVars[0].Supremum;
+                    dPivot = bitArray[0] ? listVars[0].Infimum : listVars[0].Supremum;
+                    var ctr1 = aPivot * dPivot - bPivot * bPivot;
+                    var ctr2 = (1-aPivot) * (1-dPivot) - (-bPivot) * (-bPivot);
+                    if (ctr1 >= 0 && ctr2 >= 0) break;
+                }
+
+                
                 
                 return listVars.Count != 3
                     ? new Tuple<Interval, bool, int, IEnumerable<Interval>>(Interval.Empty, false, -1, null)
                     : MutualInfoHelpers2Variables.MutualInformation(
                         listVars[0], listVars[1], listVars[2],
-                        y1A, y1B, y1C, y2A, y2B, y2C, probabilityP1, probabilityP2
+                        y1A, y1B, y1C, y2A, y2B, y2C, probabilityP1, probabilityP2, aPivot, bPivot, dPivot
                         , variables.GradientTagged, variables.GradientSolution, variables.Gradient);
             },
             Constraints = variables =>

@@ -38,6 +38,11 @@ namespace IntervalEval.Core
         {
             return i.Infimum <= a && i.Supremum >= a;
         }
+
+        public static bool ApproximatelyIn(this Interval i, double a, double precision = 1e-05)
+        {
+            return i.Infimum <= a+precision  && i.Supremum >= a-precision;
+        }
         
         public static IntervalBoolean In(this Interval lhs, Interval rhs)
         {
@@ -313,7 +318,9 @@ namespace IntervalEval.Core
         /// </summary>
         public static Interval Intersection(this Interval i, Interval otherInterval)
         {
-            if(i.Disjoint(otherInterval)) throw new Exception("Intersection is empty because the intervals are disjoint.");
+            if(i.Disjoint(otherInterval)) 
+                return Interval.Empty;
+                // throw new Exception("Intersection is empty because the intervals are disjoint.");
 
             var infimum = Math.Max(i.Infimum, otherInterval.Infimum);
             var supremum = Math.Min(i.Supremum, otherInterval.Supremum);

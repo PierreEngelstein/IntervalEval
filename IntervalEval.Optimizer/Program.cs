@@ -73,22 +73,22 @@ namespace IntervalEval
             {
                 if(double.IsNaN(d)) return;
                 fMin = d;
-                Console.WriteLine($"fMin = {fMin}");
+                // Console.WriteLine($"fMin = {fMin}");
             };
             Optimizer.IntervalFMaximum.OnChange += (_, d) =>
             {
                 if(double.IsNaN(d)) return;
                 fMax = d;
-                Console.WriteLine($"fMax = {fMax}");
+                // Console.WriteLine($"fMax = {fMax}");
             };
             Optimizer.EvolutionBoxesAmount.OnChange += (_, boxes) =>
             {
                 if (!boxes.Any()) return;
-                Console.WriteLine($"{boxes.Count - 1} => {boxes[^1]}");
-                var proc = Process.GetCurrentProcess();
-                var mem = proc.PrivateMemorySize64 / (1024.0*1024.0);
-                Console.WriteLine($"RAM usage: {mem} MB");
-                Console.WriteLine("===================");
+                // Console.WriteLine($"{boxes.Count - 1} => {boxes[^1]}");
+                // var proc = Process.GetCurrentProcess();
+                // var mem = proc.PrivateMemorySize64 / (1024.0*1024.0);
+                // Console.WriteLine($"RAM usage: {mem} MB");
+                // Console.WriteLine("===================");
             };
 
             // Optimize (and measure execution time)

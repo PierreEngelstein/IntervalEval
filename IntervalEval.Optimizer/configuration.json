@@ -26,6 +26,6 @@
       "Supremum": 2.0
     }
   ],
-  "IterationAmount": 50,
+  "IterationAmount": 100,
   "ProblemSize": 3
 }
